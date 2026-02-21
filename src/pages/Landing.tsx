@@ -8,6 +8,7 @@ import campusHero from "@/assets/campus-hero.jpg";
 import yagnadhruvaImg from "@/assets/yagnadhruva.jpg";
 import prayaagImg from "@/assets/prayaag.jpg";
 import yavanikaImg from "@/assets/yavanika.jpg";
+import { Instagram, Facebook, Youtube, Mail, Phone, Globe } from "lucide-react";
 
 const events = [
   {
@@ -53,7 +54,7 @@ const Landing = () => {
           >
             <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-secondary/20 text-secondary text-sm font-medium mb-6 border border-secondary/30">
               <Sparkles className="h-4 w-4" />
-              Campus Event Management
+              LBS Institute Of Technology for Women
             </span>
             <h1 className="font-display text-5xl md:text-7xl font-bold text-primary-foreground mb-6 leading-tight">
               Where Campus
@@ -71,7 +72,7 @@ const Landing = () => {
                 </Button>
               </Link>
               <a href="#events">
-                <Button size="lg" variant="outline" className="border-primary-foreground/30 text-primary-foreground hover:bg-primary-foreground/10 font-medium text-base px-8">
+                <Button size="lg" className="bg-white text-primary hover:bg-gray-200 font-medium text-base px-8">
                   Explore Events
                 </Button>
               </a>
@@ -86,7 +87,7 @@ const Landing = () => {
             className="mt-20 grid grid-cols-3 gap-8 max-w-lg mx-auto"
           >
             {[
-              { icon: Users, label: "Students", value: "5000+" },
+              { icon: Users, label: "Students", value: "1000+" },
               { icon: Trophy, label: "Events", value: "100+" },
               { icon: Sparkles, label: "Clubs", value: "15+" },
             ].map(({ icon: Icon, label, value }) => (
@@ -134,37 +135,125 @@ const Landing = () => {
           </div>
         </div>
       </section>
-
-      {/* CTA */}
-      <section className="py-20 bg-hero">
-        <div className="container mx-auto px-6 text-center">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            whileInView={{ opacity: 1, scale: 1 }}
-            viewport={{ once: true }}
-          >
-            <h2 className="font-display text-3xl md:text-4xl font-bold text-primary-foreground mb-4">
-              Ready to dive in?
-            </h2>
-            <p className="text-primary-foreground/60 mb-8 max-w-md mx-auto">
-              Sign up as a student or club admin and start exploring events today.
-            </p>
-            <Link to="/login">
-              <Button size="lg" className="bg-secondary text-secondary-foreground hover:bg-secondary/90 font-bold px-10 shadow-amber">
-                Login / Sign Up
-                <ArrowRight className="h-5 w-5 ml-2" />
-              </Button>
-            </Link>
-          </motion.div>
-        </div>
-      </section>
-
       {/* Footer */}
-      <footer className="bg-primary py-8">
-        <div className="container mx-auto px-6 text-center text-primary-foreground/40 text-sm">
-          © 2026 CampusHub. All rights reserved.
+<footer className="bg-[#001a3d] text-white py-12">
+  <div className="container mx-auto px-6 grid md:grid-cols-3 gap-10">
+
+    {/* College Info */}
+    <div>
+      <h3 className="text-xl font-bold mb-4">
+        LBS Institute of Technology for Women
+      </h3>
+
+      <p>Poojappura, Thiruvananthapuram - 695012</p>
+
+      <div className="mt-4 space-y-2 text-sm text-gray-300">
+        <div className="flex items-center gap-2">
+          <Phone className="w-4 h-4" />
+          <span>0471 2349232</span>
         </div>
-      </footer>
+
+        <div className="flex items-center gap-2">
+          <Mail className="w-4 h-4" />
+          <span>principal@lbt.ac.in</span>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <Globe className="w-4 h-4" />
+          <a
+            href="https://www.lbt.ac.in"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hover:text-yellow-400"
+          >
+            www.lbt.ac.in
+          </a>
+        </div>
+      </div>
+    </div>
+
+    {/* Useful Links */}
+    <div>
+      <h3 className="text-xl font-bold mb-4">Useful Links</h3>
+      <ul className="space-y-3 text-gray-300 text-sm">
+        <li>
+          <a
+            href="https://www.lbt.ac.in"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hover:text-yellow-400 transition-colors"
+          >
+            Official Website
+          </a>
+        </li>
+
+        <li>
+          <a
+            href="https://www.lbt.ac.in/placement"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hover:text-yellow-400 transition-colors"
+          >
+            Placement Cell
+          </a>
+        </li>
+
+        <li>
+          <a
+            href="https://www.lbt.ac.in/contact"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hover:text-yellow-400 transition-colors"
+          >
+            Contact Us
+          </a>
+        </li>
+      </ul>
+    </div>
+
+    {/* Social Media */}
+    <div>
+      <h3 className="text-xl font-bold mb-4">Connect With Us</h3>
+
+      <div className="flex gap-6 text-2xl">
+
+        <a
+          href="https://www.instagram.com/lbsitw_trivandrum?igsh=MWYxa21mcm91ZmoxMQ=="
+          target="_blank"
+          rel="noopener noreferrer"
+          className="hover:text-pink-500 transition-colors"
+        >
+          <Instagram />
+        </a>
+
+        <a
+          href="https://www.facebook.com/lbsitwpoojappura"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="hover:text-blue-400 transition-colors"
+        >
+          <Facebook />
+        </a>
+
+        <a
+          href="https://www.youtube.com/@lbsitwcampus"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="hover:text-red-500 transition-colors"
+        >
+          <Youtube />
+        </a>
+
+      </div>
+    </div>
+
+  </div>
+
+  {/* Bottom Line */}
+  <div className="text-center text-gray-400 text-sm mt-10 border-t border-gray-700 pt-6">
+    © 2026 LBS Institute of Technology for Women. All Rights Reserved.
+  </div>
+</footer>
     </div>
   );
 };
