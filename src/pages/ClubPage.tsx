@@ -33,7 +33,7 @@ const clubData: Record<string, { description: string; events: { title: string; d
       { title: "Startup Pitch", date: "2026-03-25", location: "Conference Room" },
     ],
   },
-  "Navaras": {
+  "Navarasa": {
     description: "Navaras celebrates the nine emotions through performing arts — dance, drama, music, and fine arts. It's the heartbeat of cultural expression on campus.",
     events: [
       { title: "Dance Battle", date: "2026-02-20", location: "Auditorium" },
