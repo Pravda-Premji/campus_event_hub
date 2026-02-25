@@ -1,10 +1,15 @@
+// 🔹 imports (clean)
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Calendar, ArrowLeft } from "lucide-react";
+import { ArrowLeft, Calendar } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 
 import { auth, db } from "@/firebase";
+
 import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
@@ -17,16 +22,11 @@ import {
   doc,
   setDoc,
   getDoc,
-  updateDoc,
   collection,
   query,
   where,
   getDocs,
 } from "firebase/firestore";
-
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 
 const Login = () => {
   const navigate = useNavigate();
@@ -34,31 +34,21 @@ const Login = () => {
   const [isSignUp, setIsSignUp] = useState(false);
   const [showForgot, setShowForgot] = useState(false);
 
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   const [forgotEmail, setForgotEmail] = useState("");
   const [verified, setVerified] = useState(false);
-  // ================= AUTO VERIFY CHECK =================
+
+  // ================= EMAIL VERIFIED MESSAGE =================
   useEffect(() => {
-  const checkVerification = async () => {
     const user = auth.currentUser;
-
-    console.log("Checking verification...", user);
-
-    if (!user) return;
-
-    await user.reload();
-
-    console.log("Email verified status:", user.emailVerified);
-
-    if (user.emailVerified) {
-      setVerified(true);   // 👈 this triggers green message
+    if (user && user.emailVerified) {
+      setVerified(true);
     }
-  };
+  }, []);
 
-  checkVerification();
-}, []);
   // ================= SIGNUP / LOGIN =================
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -71,6 +61,11 @@ const Login = () => {
     try {
       // -------- SIGNUP --------
       if (isSignUp) {
+        if (password !== confirmPassword) {
+          toast.error("Passwords do not match");
+          return;
+        }
+
         const q = query(
           collection(db, "allowed_users"),
           where("email", "==", email)
@@ -84,11 +79,7 @@ const Login = () => {
 
         const allowedData = allowed.docs[0].data();
 
-        const cred = await createUserWithEmailAndPassword(
-          auth,
-          email,
-          password
-        );
+        const cred = await createUserWithEmailAndPassword(auth, email, password);
         const user = cred.user;
 
         if (name) await updateProfile(user, { displayName: name });
@@ -98,21 +89,23 @@ const Login = () => {
           email,
           role: allowedData.role,
           club: allowedData.club || null,
-          firstLoginDone: false,
         });
 
         await sendEmailVerification(user);
-toast.success("Verification email sent. Please verify and then login.", {
-  duration: 5000,   // ⏱️ 5 seconds (you can use 7000 or 10000)
-});    }
+
+        toast.success("Verification email sent. Please verify and then login.", {
+          duration: 5000,
+        });
+
+        return;
+      }
 
       // -------- LOGIN --------
       const cred = await signInWithEmailAndPassword(auth, email, password);
       const user = cred.user;
 
-      await user.reload();
       if (!user.emailVerified) {
-        toast.dismiss();   // remove previous message
+        toast.dismiss();
         toast.error("Verify email first");
         return;
       }
@@ -157,26 +150,31 @@ toast.success("Verification email sent. Please verify and then login.", {
   };
 
   // ================= FORGOT PASSWORD =================
-  const handleForgot = async () => {
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+
     if (!forgotEmail) {
       toast.error("Enter email");
       return;
     }
-    await sendPasswordResetEmail(auth, forgotEmail);
-    toast.success("Reset link sent");
-    setShowForgot(false);
+
+    try {
+      await sendPasswordResetEmail(auth, forgotEmail);
+      toast.success("Password reset email sent");
+      setShowForgot(false);
+      setForgotEmail("");
+    } catch {
+      toast.error("Failed to send reset email");
+    }
   };
 
   return (
     <div className="min-h-screen bg-hero flex items-center justify-center p-6 relative">
-      <button
-        onClick={() => navigate("/")}
-        className="absolute top-6 left-6 flex items-center gap-2 text-primary-foreground/70"
-      >
+      <button onClick={() => navigate("/")} className="absolute top-6 left-6 flex gap-2">
         <ArrowLeft className="h-4 w-4" /> Back
       </button>
 
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="w-full max-w-md">
+      <motion.div className="w-full max-w-md">
         <div className="text-center mb-6">
           <Calendar className="mx-auto h-8 w-8 text-secondary" />
           <h1 className="text-2xl font-bold mt-2">
@@ -185,73 +183,45 @@ toast.success("Verification email sent. Please verify and then login.", {
         </div>
 
         <div className="bg-card p-8 rounded-2xl shadow-xl">
-           {/* ✅ Verification message */}
-  {verified && (
-    <div className="bg-green-100 text-green-700 p-3 rounded-md text-sm mb-3 text-center">
-      Email verified successfully ✅ <br />
-      Please login to continue.
-    </div>
-  )}
+
+          {verified && (
+            <div className="bg-green-100 text-green-700 p-3 rounded-md text-sm mb-3 text-center">
+              Email verified successfully ✅ <br /> Please login to continue.
+            </div>
+          )}
+
           <form onSubmit={handleSubmit} className="space-y-4">
 
             {isSignUp && (
-              <div>
+              <>
                 <Label>Full Name</Label>
                 <Input value={name} onChange={(e) => setName(e.target.value)} />
-              </div>
+              </>
             )}
 
-            <div>
-              <Label>Email</Label>
-              <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
-            </div>
+            <Label>Email</Label>
+            <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
 
-            <div>
-              <Label>Password</Label>
-              <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
-            </div>
+            <Label>Password</Label>
+            <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
 
-            <Button className="w-full bg-secondary">
-              {isSignUp ? "Create Account" : "Login"}
+            {isSignUp && (
+              <>
+                <Label>Confirm Password</Label>
+                <Input
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                />
+              </>
+            )}
+
+            <Button type="submit" className="w-full bg-secondary">
+              {isSignUp ? "Create Account" : "Sign In"}
             </Button>
           </form>
-
-          {!isSignUp && (
-            <button
-              onClick={() => setShowForgot(true)}
-              className="text-sm mt-3 w-full text-muted-foreground"
-            >
-              Forgot password?
-            </button>
-          )}
-
-          <div className="mt-4 text-center">
-            <button
-              onClick={() => setIsSignUp(!isSignUp)}
-              className="text-secondary text-sm font-semibold"
-            >
-              {isSignUp ? "Already have an account? Login" : "Don't have an account? Sign Up"}
-            </button>
-          </div>
         </div>
       </motion.div>
-
-      <AnimatePresence>
-        {showForgot && (
-          <motion.div className="fixed inset-0 bg-black/40 flex items-center justify-center">
-            <div className="bg-card p-6 rounded-xl w-full max-w-sm">
-              <Label>Email</Label>
-              <Input
-                value={forgotEmail}
-                onChange={(e) => setForgotEmail(e.target.value)}
-              />
-              <Button onClick={handleForgot} className="w-full mt-4 bg-secondary">
-                Send Reset Link
-              </Button>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </div>
   );
 };

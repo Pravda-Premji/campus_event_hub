@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ArrowRight, Sparkles, Users, Trophy } from "lucide-react";
+import { ArrowRight, Sparkles, Users, Trophy, Instagram, Facebook, Youtube, Mail, Phone, Globe } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import FlipCard from "@/components/FlipCard";
 import Navbar from "@/components/Navbar";
@@ -8,7 +8,10 @@ import campusHero from "@/assets/campus-hero.jpg";
 import yagnadhruvaImg from "@/assets/yagnadhruva.jpg";
 import prayaagImg from "@/assets/prayaag.jpg";
 import yavanikaImg from "@/assets/yavanika.jpg";
-import { Instagram, Facebook, Youtube, Mail, Phone, Globe } from "lucide-react";
+import { Swiper, SwiperSlide } from "swiper/react";
+import { EffectCoverflow, Autoplay } from "swiper/modules";
+import "swiper/css";
+import "swiper/css/effect-coverflow";
 
 const events = [
   {
@@ -100,7 +103,61 @@ const Landing = () => {
           </motion.div>
         </div>
       </section>
+     {/* 3D Events Showcase */}
+<section className="py-24 bg-background">
+  <div className="container mx-auto px-6 text-center">
 
+    <h2 className="text-4xl font-bold mb-16">
+      Explore Campus Life
+    </h2>
+
+    <Swiper
+  effect="coverflow"
+  centeredSlides={true}
+  slidesPerView={"auto"}
+  loop={true}
+  speed={1200}
+  grabCursor={true}
+  autoplay={{
+    delay: 2000,
+    disableOnInteraction: false,
+  }}
+  coverflowEffect={{
+    rotate: 0,
+    stretch: 0,
+    depth: 300,
+    modifier: 2.5,
+    slideShadows: false,
+  }}
+  modules={[EffectCoverflow, Autoplay]}
+  className="max-w-6xl"
+>
+
+      <SwiperSlide>
+        <img
+          src="https://images.unsplash.com/photo-1531482615713-2afd69097998"
+          className="rounded-2xl h-[400px] w-full object-cover"
+        />
+      </SwiperSlide>
+
+      <SwiperSlide>
+        <img
+          src="https://images.unsplash.com/photo-1492684223066-81342ee5ff30"
+          className="rounded-2xl h-[400px] w-full object-cover"
+        />
+      </SwiperSlide>
+
+      <SwiperSlide>
+        <img
+          src="https://images.unsplash.com/photo-1508606572321-901ea443707f"
+          className="rounded-2xl h-[400px] w-full object-cover"
+        />
+      </SwiperSlide>
+
+    </Swiper>
+
+  </div>
+</section>
       {/* Events Section */}
       <section id="events" className="py-24 bg-background">
         <div className="container mx-auto px-6">
