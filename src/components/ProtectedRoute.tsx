@@ -1,43 +1,60 @@
+import { ReactNode, useEffect, useState } from "react";
 import { Navigate } from "react-router-dom";
-import { useEffect, useState } from "react";
-import { onAuthStateChanged, User } from "firebase/auth";
+import { auth, db } from "@/firebase";
+import { onAuthStateChanged } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
-import { auth } from "@/firebase";
-import { db } from "@/firebase";
 
-interface Props {
-  children: JSX.Element;
-  allowed: string[];
-}
+type Props = {
+  children: ReactNode;
+  allowed?: ("student" | "admin" | "club_admin")[]; // roles allowed for this route
+};
 
-const ProtectedRoute = ({ children, allowed }: Props) => {
-  const [user, setUser] = useState<User | null | undefined>(undefined);
-  const [role, setRole] = useState<string | null>(null);
+export default function ProtectedRoute({ children, allowed }: Props) {
+  const [loading, setLoading] = useState(true);
+  const [authorized, setAuthorized] = useState(false);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
-      if (!currentUser) {
-        setUser(null);
+    const unsub = onAuthStateChanged(auth, async (user) => {
+      if (!user) {
+        setAuthorized(false);
+        setLoading(false);
         return;
       }
 
-      setUser(currentUser);
+      try {
+        const snap = await getDoc(doc(db, "users", user.uid));
+        if (!snap.exists()) {
+          setAuthorized(false);
+          setLoading(false);
+          return;
+        }
 
-      const snap = await getDoc(doc(db, "users", currentUser.uid));
-      setRole(snap.data()?.role || null);
+        const data = snap.data();
+        const role = String(data.role).toLowerCase();
+
+        // If no role restriction → allow logged-in user
+        if (!allowed || allowed.length === 0) {
+          setAuthorized(true);
+        } 
+        // Check role match
+else if (allowed.includes(role as "student" | "admin" | "club_admin")) {          setAuthorized(true);
+        } 
+        else {
+          setAuthorized(false);
+        }
+      } catch {
+        setAuthorized(false);
+      }
+
+      setLoading(false);
     });
 
-    return () => unsubscribe();
-  }, []);
+    return () => unsub();
+  }, [allowed]);
 
-  if (user === undefined) return null;
-  if (!user) return <Navigate to="/login" replace />;
+  if (loading) return null; // or loader
 
-  if (!allowed.includes(role || "")) {
-    return <Navigate to="/login" replace />;
-  }
+  if (!authorized) return <Navigate to="/login" replace />;
 
-  return children;
-};
-
-export default ProtectedRoute;
+  return <>{children}</>;
+}

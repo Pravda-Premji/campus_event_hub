@@ -1,5 +1,4 @@
-// 🔹 imports (clean)
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft, Calendar } from "lucide-react";
@@ -39,15 +38,6 @@ const Login = () => {
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   const [forgotEmail, setForgotEmail] = useState("");
-  const [verified, setVerified] = useState(false);
-
-  // ================= EMAIL VERIFIED MESSAGE =================
-  useEffect(() => {
-    const user = auth.currentUser;
-    if (user && user.emailVerified) {
-      setVerified(true);
-    }
-  }, []);
 
   // ================= SIGNUP / LOGIN =================
   const handleSubmit = async (e: React.FormEvent) => {
@@ -59,13 +49,14 @@ const Login = () => {
     }
 
     try {
-      // -------- SIGNUP --------
+      // ---------- SIGN UP ----------
       if (isSignUp) {
         if (password !== confirmPassword) {
           toast.error("Passwords do not match");
           return;
         }
 
+        // Check allowed_users
         const q = query(
           collection(db, "allowed_users"),
           where("email", "==", email)
@@ -93,20 +84,24 @@ const Login = () => {
 
         await sendEmailVerification(user);
 
-        toast.success("Verification email sent. Please verify and then login.", {
-          duration: 5000,
-        });
+        toast.success(
+          "Verification email sent. Please verify and then login.",
+          { duration: 5000 }
+        );
 
         return;
       }
 
-      // -------- LOGIN --------
+      // ---------- LOGIN ----------
       const cred = await signInWithEmailAndPassword(auth, email, password);
       const user = cred.user;
 
+      // Ensure latest verification state
+      await user.reload();
+
       if (!user.emailVerified) {
         toast.dismiss();
-        toast.error("Verify email first");
+        toast.error("Please verify your email first");
         return;
       }
 
@@ -118,35 +113,43 @@ const Login = () => {
 
       const data = snap.data();
 
-      toast.success("Login successful!");
 
-      if (data.role === "student") navigate("/student");
-      else navigate("/admin");
+console.log("ROLE FROM FIRESTORE:", data.role);
 
+      // Role‑based redirect
+      if (data.role === "student") {
+        navigate("/student", { replace: true });
+      } else if (data.role === "admin" || data.role === "club_admin") {
+        console.log("Navigating to ADMIN...");
+        navigate("/admin?test=1", { replace: true });
+      } else {
+        console.log("UNKNOWN ROLE:", data.role);
+        toast.error("Role not assigned");
+      }
     } catch (err: unknown) {
-  if (err && typeof err === "object" && "code" in err) {
-    const firebaseError = err as { code: string };
+      if (err && typeof err === "object" && "code" in err) {
+        const firebaseError = err as { code: string };
 
-    switch (firebaseError.code) {
-      case "auth/email-already-in-use":
-        toast.error("Email already registered");
-        break;
-      case "auth/user-not-found":
-        toast.error("User not found");
-        break;
-      case "auth/wrong-password":
-        toast.error("Wrong password");
-        break;
-      case "auth/invalid-email":
-        toast.error("Invalid email");
-        break;
-      default:
-        toast.error("Something went wrong");
+        switch (firebaseError.code) {
+          case "auth/email-already-in-use":
+            toast.error("Email already registered");
+            break;
+          case "auth/user-not-found":
+            toast.error("User not found");
+            break;
+          case "auth/wrong-password":
+            toast.error("Wrong password");
+            break;
+          case "auth/invalid-email":
+            toast.error("Invalid email");
+            break;
+          default:
+            toast.error("Something went wrong");
+        }
+      } else {
+        toast.error("Unexpected error occurred");
+      }
     }
-  } else {
-    toast.error("Unexpected error occurred");
-  }
-}
   };
 
   // ================= FORGOT PASSWORD =================
@@ -170,11 +173,13 @@ const Login = () => {
 
   return (
     <div className="min-h-screen bg-hero flex items-center justify-center p-6 relative">
+
       <button onClick={() => navigate("/")} className="absolute top-6 left-6 flex gap-2">
         <ArrowLeft className="h-4 w-4" /> Back
       </button>
 
       <motion.div className="w-full max-w-md">
+
         <div className="text-center mb-6">
           <Calendar className="mx-auto h-8 w-8 text-secondary" />
           <h1 className="text-2xl font-bold mt-2">
@@ -183,12 +188,6 @@ const Login = () => {
         </div>
 
         <div className="bg-card p-8 rounded-2xl shadow-xl">
-
-          {verified && (
-            <div className="bg-green-100 text-green-700 p-3 rounded-md text-sm mb-3 text-center">
-              Email verified successfully ✅ <br /> Please login to continue.
-            </div>
-          )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
 
@@ -217,11 +216,53 @@ const Login = () => {
             )}
 
             <Button type="submit" className="w-full bg-secondary">
-              {isSignUp ? "Create Account" : "Sign In"}
-            </Button>
+  {isSignUp ? "Create Account" : "Sign In"}
+</Button>
           </form>
+
+          {!isSignUp && (
+            <button
+              onClick={() => setShowForgot(true)}
+              className="text-sm mt-3 w-full text-muted-foreground"
+            >
+              Forgot password?
+            </button>
+          )}
+
+          <div className="mt-4 text-center">
+            <button
+              onClick={() => setIsSignUp(!isSignUp)}
+              className="text-secondary text-sm font-semibold"
+            >
+              {isSignUp
+                ? "Already have an account? Sign In"
+                : "Don't have an account? Sign Up"}
+            </button>
+          </div>
         </div>
       </motion.div>
+
+      {/* Forgot Password Popup */}
+      <AnimatePresence>
+        {showForgot && (
+          <motion.div className="fixed inset-0 bg-black/40 flex items-center justify-center">
+            <div className="bg-card p-6 rounded-xl w-full max-w-sm">
+              <form onSubmit={handleForgotPassword}>
+                <Label>Email</Label>
+                <Input
+                  type="email"
+                  value={forgotEmail}
+                  onChange={(e) => setForgotEmail(e.target.value)}
+                />
+                <Button type="submit" className="w-full bg-secondary">
+  Send Reset Link
+</Button>
+              </form>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
     </div>
   );
 };
