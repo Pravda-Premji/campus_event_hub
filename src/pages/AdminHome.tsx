@@ -21,23 +21,24 @@ interface EventItem {
   time: string;
   location: string;
   registrationLink: string;
+   posterURL?: string;
 }
 
 const AdminHome = () => {
   const navigate = useNavigate();
 
-  const [events, setEvents] = useState<EventItem[]>([
+ const [events, setEvents] = useState<EventItem[]>([
     {
       id: 1,
-      title: "Hackathon 2026",
-      description: "24-hour coding marathon with exciting prizes",
-      date: "2026-03-15",
-      time: "09:00",
-      location: "Lab 301",
-      registrationLink: "https://forms.google.com/example",
+      title: "",
+      description: "",
+      date: "",
+      time: "",
+      location: "",
+      registrationLink: "",
     },
   ]);
-
+  const [poster, setPoster] = useState<File | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
 
@@ -58,7 +59,12 @@ const AdminHome = () => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+     const eventData = {
+    ...form,
+    posterName: poster ? poster.name : null
+  };
 
+  console.log(eventData);
     if (!form.title || !form.date) {
       toast.error("Please fill required fields");
       return;
@@ -136,12 +142,65 @@ const AdminHome = () => {
             <Plus className="h-4 w-4" /> New Event
           </Button>
         </div>
+       <h2 className="text-2xl font-bold mt-10">Club Profile</h2>
 
+<div className="bg-card p-6 rounded-lg mt-4 space-y-4">
+
+  <input
+    type="text"
+    placeholder="Club Name"
+    className="w-full border p-2 rounded"
+  />
+
+  <textarea
+    placeholder="Club Introduction"
+    className="w-full border p-2 rounded"
+  />
+
+  <input
+    type="text"
+    placeholder="Flagship Event Name"
+    className="w-full border p-2 rounded"
+  />
+
+  <button className="bg-orange-500 text-white px-4 py-2 rounded">
+    Save Club Profile
+  </button>
+
+</div>
         {/* Event List */}
         <div className="space-y-4">
           {events.map(event => (
             <div key={event.id} className="bg-card rounded-xl p-6 shadow-card">
+           {event?.posterURL && (
+  <img
+    src={event.posterURL}
+    alt={event.title}
+    className="w-full h-48 object-cover rounded-lg mb-3"
+  />
+)}
+<h3 className="text-xl font-semibold mt-6">Execom Members</h3>
 
+<div className="space-y-3">
+
+  <input
+    type="text"
+    placeholder="Member Name"
+    className="w-full border p-2 rounded"
+  />
+
+  <input
+    type="text"
+    placeholder="Role (President, Secretary...)"
+    className="w-full border p-2 rounded"
+  />
+
+  <input
+    type="file"
+    accept="image/*"
+  />
+
+</div>
               <h3 className="font-bold text-lg">{event.title}</h3>
               <p className="text-muted-foreground text-sm">{event.description}</p>
 
@@ -150,7 +209,57 @@ const AdminHome = () => {
                 <span><Clock className="inline h-4 w-4" /> {event.time}</span>
                 <span><MapPin className="inline h-4 w-4" /> {event.location}</span>
               </div>
+              <h3 className="text-xl font-semibold mt-8">Past Events</h3>
 
+<div className="space-y-3 bg-card p-4 rounded-lg">
+
+  <input
+    type="text"
+    placeholder="Past Event Name"
+    className="w-full border p-2 rounded"
+  />
+
+  <textarea
+    placeholder="Event Description"
+    className="w-full border p-2 rounded"
+  />
+
+  <input
+    type="file"
+    accept="image/*"
+    className="w-full border p-2 rounded"
+  />
+
+  <button className="bg-orange-500 text-white px-4 py-2 rounded">
+    Add Past Event
+  </button>
+
+</div>
+              <h3 className="text-xl font-semibold mt-8">Upcoming Events</h3>
+
+<div className="space-y-3 bg-card p-4 rounded-lg">
+
+  <input
+    type="text"
+    placeholder="Upcoming Event Name"
+    className="w-full border p-2 rounded"
+  />
+
+  <input
+    type="date"
+    className="w-full border p-2 rounded"
+  />
+
+  <textarea
+    placeholder="Event Description"
+    className="w-full border p-2 rounded"
+  />
+
+  <button className="bg-orange-500 text-white px-4 py-2 rounded">
+    Add Upcoming Event
+  </button>
+
+</div>
               {event.registrationLink && (
                 <a
                   href={event.registrationLink}
@@ -192,7 +301,7 @@ const AdminHome = () => {
               </h3>
 
               <form onSubmit={handleSubmit} className="space-y-3">
-
+                
                 <Input
                   placeholder="Title"
                   value={form.title}
@@ -226,7 +335,23 @@ const AdminHome = () => {
                   value={form.registrationLink}
                   onChange={e => setForm({ ...form, registrationLink: e.target.value })}
                 />
+                <div className="mt-3">
+  <label className="text-sm font-medium">Event Poster</label>
 
+  <input
+    type="file"
+    accept="image/*"
+    onChange={(e) => setPoster(e.target.files?.[0] || null)}
+    className="w-full border rounded-lg p-2 mt-1"
+  />
+</div>
+{poster && (
+  <img
+    src={URL.createObjectURL(poster)}
+    alt="Poster Preview"
+    className="mt-3 rounded-lg w-full h-40 object-cover"
+  />
+)}
                 <Button type="submit" className="w-full bg-secondary">
                   {editingId ? "Update Event" : "Create Event"}
                 </Button>
