@@ -7,7 +7,8 @@ import Navbar from "@/components/Navbar";
 import campusHero from "@/assets/campus-hero.jpg";
 import yagnadhruvaImg from "@/assets/yagnadhruva.jpg";
 import prayaagImg from "@/assets/prayaag.jpg";
-import yavanikaImg from "@/assets/yavanika.jpg";
+import yavanikaImg from "@/assets/yavanika.jpeg";
+import myimage from "@/assets/myimage.jpeg";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { EffectCoverflow, Autoplay } from "swiper/modules";
 import "swiper/css";
@@ -135,7 +136,7 @@ const Landing = () => {
 
       <SwiperSlide>
         <img
-          src="https://images.unsplash.com/photo-1531482615713-2afd69097998"
+          src={myimage}
           className="rounded-2xl h-[400px] w-full object-cover"
         />
       </SwiperSlide>
