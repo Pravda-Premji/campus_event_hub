@@ -111,21 +111,24 @@ const Login = () => {
         return;
       }
 
-      const data = snap.data();
+      const data = snap.data() as any;
 
+console.log("FULL USER DATA:", data);
 
-console.log("ROLE FROM FIRESTORE:", data.role);
+// 🚨 SAFETY CHECK
+if (!data || !data.role) {
+  toast.error("Role not assigned in database");
+  return;
+}
 
       // Role‑based redirect
       if (data.role === "student") {
-        navigate("/student", { replace: true });
-      } else if (data.role === "admin" || data.role === "club_admin") {
-        console.log("Navigating to ADMIN...");
-        navigate("/admin?test=1", { replace: true });
-      } else {
-        console.log("UNKNOWN ROLE:", data.role);
-        toast.error("Role not assigned");
-      }
+  navigate("/student", { replace: true });
+} else if (data.role === "admin" || data.role === "club_admin") {
+  navigate("/admin", { replace: true });
+} else {
+  toast.error("Invalid role");
+}
     } catch (err: unknown) {
       if (err && typeof err === "object" && "code" in err) {
         const firebaseError = err as { code: string };
