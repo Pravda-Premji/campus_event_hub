@@ -9,9 +9,10 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { signOut } from "firebase/auth";
-import { auth, db, storage } from "@/firebase";
+import { auth, db } from "@/firebase";
 import { collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc } from "firebase/firestore";
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+
+
    import { addDoc, query, where} from "firebase/firestore"; // add at top
 
 // Type definitions
@@ -65,29 +66,53 @@ const AdminHome = () => {
     location: "",
     registrationLink: "",
   });
-
+  
   // --- FETCH ALL DATA ---
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const profileRef = doc(db, "adminData", "clubProfile");
-        const snap = await getDoc(profileRef);
-        if (snap.exists()) setClubProfile(snap.data() as ClubProfile);
+  const fetchData = async () => {
+    try {
+      const user = auth.currentUser;
+      if (!user?.email) return;
 
-        const execomSnap = await getDocs(collection(db, "execomMembers"));
-        setExecom(execomSnap.docs.map(d => ({ id: d.id, ...d.data() })) as ExecomMember[]);
+      // 🔥 FIXED: FETCH CLUB FROM "clubs" COLLECTION
+      const q = query(
+        collection(db, "clubs"),
+        where("adminEmail", "==", user.email)
+      );
 
-        const eventsSnap = await getDocs(collection(db, "events"));
-        setEvents(eventsSnap.docs.map(d => ({ id: d.id, ...d.data() })) as EventItem[]);
-      } catch (err) {
-        console.error("Error loading data:", err);
+      const clubSnap = await getDocs(q);
+
+      if (!clubSnap.empty) {
+        const data = clubSnap.docs[0].data();
+
+        setClubProfile({
+          name: data.name || "",
+          intro: data.intro || "",
+          flagshipEvent: data.flagshipEvent || "",
+        });
       }
-    };
-    fetchData();
-  }, []);
+
+      // ✅ KEEP THESE SAME (UNCHANGED)
+      const execomSnap = await getDocs(collection(db, "execomMembers"));
+      setExecom(
+        execomSnap.docs.map(d => ({ id: d.id, ...d.data() })) as ExecomMember[]
+      );
+
+      const eventsSnap = await getDocs(collection(db, "events"));
+      setEvents(
+        eventsSnap.docs.map(d => ({ id: d.id, ...d.data() })) as EventItem[]
+      );
+
+    } catch (err) {
+      console.error("Error loading data:", err);
+    }
+  };
+
+  fetchData();
+}, []);
 
   // --- CLUB PROFILE SAVE ---
-  const handleSaveClubProfile = async () => {
+ const handleSaveClubProfile = async () => {
   try {
     const user = auth.currentUser;
 
@@ -96,25 +121,37 @@ const AdminHome = () => {
       return;
     }
 
-    const q = query(
-      collection(db, "clubs"),
-      where("adminEmail", "==", user.email)
-    );
+    const clubsRef = collection(db, "clubs");
 
+    // 🔍 check if this admin already has a club
+    const q = query(clubsRef, where("adminEmail", "==", user.email));
     const snap = await getDocs(q);
 
     if (!snap.empty) {
-      const clubDoc = snap.docs[0];
-      await updateDoc(clubDoc.ref, { ...clubProfile });
+      // ✅ UPDATE existing club
+      const docRef = snap.docs[0].ref;
+
+      await updateDoc(docRef, {
+        name: clubProfile.name,
+        intro: clubProfile.intro,
+        flagshipEvent: clubProfile.flagshipEvent,
+      });
+
     } else {
-      await addDoc(collection(db, "clubs"), {
-        ...clubProfile,
+      // ✅ CREATE new club
+      await addDoc(clubsRef, {
+        name: clubProfile.name,
+        intro: clubProfile.intro,
+        flagshipEvent: clubProfile.flagshipEvent,
         adminEmail: user.email,
       });
     }
 
+    console.log("Saved to Firestore:", clubProfile); // 🔍 DEBUG
     toast.success("Club profile saved!");
+
   } catch (error) {
+    console.error("SAVE ERROR:", error);
     toast.error("Failed to save club profile");
   }
 };
@@ -126,16 +163,38 @@ const AdminHome = () => {
       return;
     }
     let imageURL = "";
-    if (memberImage) {
-      const fileRef = ref(storage, `execom/${Date.now()}-${memberImage.name}`);
-      await uploadBytes(fileRef, memberImage);
-      imageURL = await getDownloadURL(fileRef);
-    }
-    const newMember = {
-      name: member.name,
-      role: member.role,
-      imageURL,
-    };
+
+if (memberImage) {
+  try {
+    const formData = new FormData();
+    formData.append("file", memberImage);
+    formData.append("upload_preset", "campus_upload");
+
+    const res = await fetch(
+      "https://api.cloudinary.com/v1_1/drnrkdzfa/image/upload",
+      {
+        method: "POST",
+        body: formData,
+      }
+    );
+
+    const data = await res.json();
+
+    imageURL = data.secure_url;
+
+    console.log("Member image uploaded:", imageURL);
+  } catch (err) {
+    console.error("Upload failed:", err);
+    toast.error("Image upload failed");
+    return;
+  }
+}
+ const newMember = {
+  name: member.name,
+  role: member.role,
+  imageURL,
+};
+   
     const docRef = doc(collection(db, "execomMembers"));
     await setDoc(docRef, newMember);
     setExecom(prev => [...prev, { id: docRef.id, ...newMember }]);
@@ -196,11 +255,32 @@ const handleSubmitEvent = async (e: React.FormEvent) => {
     let posterURL = "";
 
     if (poster) {
-      const fileRef = ref(storage, `events/${Date.now()}-${poster.name}`);
-      await uploadBytes(fileRef, poster);
-      posterURL = await getDownloadURL(fileRef);
+  try {
+    const formData = new FormData();
+    formData.append("file", poster);
+    formData.append("upload_preset", "campus_upload");
+
+    const res = await fetch(
+      "https://api.cloudinary.com/v1_1/drnrkdzfa/image/upload",
+      {
+        method: "POST",
+        body: formData,
+      }
+    );
+
+    const data = await res.json();
+     console.log("Cloudinary response:", data);
+      if (!res.ok) {
+      throw new Error(data.error?.message || "Upload failed");
     }
 
+    posterURL = data.secure_url;
+  } catch (err) {
+    console.error("Upload failed:", err);
+    toast.error("Image upload failed");
+    return;
+  }
+}
     // 🔥 STEP 4: UPDATE EVENT
     if (editingId) {
       const docRef = doc(db, "events", editingId);
