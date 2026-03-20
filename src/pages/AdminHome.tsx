@@ -72,7 +72,7 @@ const [upiId, setUpiId] = useState("");
 const [paymentInstructions, setPaymentInstructions] = useState("");
 const [requireScreenshot, setRequireScreenshot] = useState(false);
 const [paymentFile, setPaymentFile] = useState<File | null>(null);
-
+const [clubId, setClubId] = useState("");
 const [limitParticipants, setLimitParticipants] = useState(false);
 const [maxParticipants, setMaxParticipants] = useState("");
   // --- FETCH ALL DATA ---
@@ -91,7 +91,10 @@ const [maxParticipants, setMaxParticipants] = useState("");
       const clubSnap = await getDocs(q);
 
       if (!clubSnap.empty) {
-        const data = clubSnap.docs[0].data();
+      const doc = clubSnap.docs[0];
+  const data = doc.data();
+
+  setClubId(doc.id);
 
         setClubProfile({
           name: data.name || "",
@@ -101,16 +104,32 @@ const [maxParticipants, setMaxParticipants] = useState("");
       }
 
       // ✅ KEEP THESE SAME (UNCHANGED)
-      const execomSnap = await getDocs(collection(db, "execomMembers"));
-      setExecom(
-        execomSnap.docs.map(d => ({ id: d.id, ...d.data() })) as ExecomMember[]
-      );
+     const execomQuery = query(
+  collection(db, "execomMembers"),
+  where("clubId", "==", clubId)
+);
 
-      const eventsSnap = await getDocs(collection(db, "events"));
-      setEvents(
-        eventsSnap.docs.map(d => ({ id: d.id, ...d.data() })) as EventItem[]
-      );
+const execomSnap = await getDocs(execomQuery);
 
+setExecom(
+  execomSnap.docs.map(d => ({
+    id: d.id,
+    ...(d.data() as ExecomMember),
+  }))
+);
+const eventsQuery = query(
+  collection(db, "events"),
+  where("clubId", "==", clubId)
+);
+
+const eventsSnap = await getDocs(eventsQuery);
+
+setEvents(
+  eventsSnap.docs.map(d => ({
+    id: d.id,
+    ...(d.data() as EventItem),
+  }))
+);
     } catch (err) {
       console.error("Error loading data:", err);
     }
@@ -166,51 +185,73 @@ const [maxParticipants, setMaxParticipants] = useState("");
 
   // --- ADD EXECom MEMBER ---
   const handleAddExecom = async () => {
-    if (!member.name || !member.role) {
-      toast.error("Please enter name and role");
-      return;
-    }
-    let imageURL = "";
-
-if (memberImage) {
-  try {
-    const formData = new FormData();
-    formData.append("file", memberImage);
-    formData.append("upload_preset", "campus_upload");
-
-    const res = await fetch(
-      "https://api.cloudinary.com/v1_1/drnrkdzfa/image/upload",
-      {
-        method: "POST",
-        body: formData,
-      }
-    );
-
-    const data = await res.json();
-
-    imageURL = data.secure_url;
-
-    console.log("Member image uploaded:", imageURL);
-  } catch (err) {
-    console.error("Upload failed:", err);
-    toast.error("Image upload failed");
+  if (!member.name || !member.role) {
+    toast.error("Please enter name and role");
     return;
   }
-}
- const newMember = {
-  name: member.name,
-  role: member.role,
-  imageURL,
-};
-   
-    const docRef = doc(collection(db, "execomMembers"));
-    await setDoc(docRef, newMember);
-    setExecom(prev => [...prev, { id: docRef.id, ...newMember }]);
-    setMember({ name: "", role: "" });
-    setMemberImage(null);
-    toast.success("Member added!");
+
+  const user = auth.currentUser;
+  if (!user?.email) return;
+
+  // 🔥 ADD THIS BLOCK HERE (VERY IMPORTANT)
+  const clubQuery = query(
+    collection(db, "clubs"),
+    where("adminEmail", "==", user.email)
+  );
+
+  const clubSnap = await getDocs(clubQuery);
+
+  if (clubSnap.empty) {
+    toast.error("Club not found");
+    return;
+  }
+
+  const clubId = clubSnap.docs[0].id; // ✅ NOW clubId EXISTS
+
+  // ---------------- IMAGE UPLOAD ----------------
+  let imageURL = "";
+
+  if (memberImage) {
+    try {
+      const formData = new FormData();
+      formData.append("file", memberImage);
+      formData.append("upload_preset", "campus_upload");
+
+      const res = await fetch(
+        "https://api.cloudinary.com/v1_1/drnrkdzfa/image/upload",
+        {
+          method: "POST",
+          body: formData,
+        }
+      );
+
+      const data = await res.json();
+      imageURL = data.secure_url;
+
+    } catch (err) {
+      console.error("Upload failed:", err);
+      toast.error("Image upload failed");
+      return;
+    }
+  }
+
+  // ---------------- SAVE MEMBER ----------------
+  const newMember = {
+    name: member.name,
+    role: member.role,
+    imageURL,
+    clubId, // ✅ now works
   };
 
+  const docRef = doc(collection(db, "execomMembers"));
+  await setDoc(docRef, newMember);
+
+  setExecom(prev => [...prev, { id: docRef.id, ...newMember }]);
+  setMember({ name: "", role: "" });
+  setMemberImage(null);
+
+  toast.success("Member added!");
+};
   // --- DELETE EXECom MEMBER ---
   const handleDeleteMember = async (id: string) => {
     await deleteDoc(doc(db, "execomMembers", id));
