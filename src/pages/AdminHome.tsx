@@ -66,7 +66,15 @@ const AdminHome = () => {
     location: "",
     registrationLink: "",
   });
-  
+  const [eventType, setEventType] = useState<"free" | "paid">("free");
+
+const [upiId, setUpiId] = useState("");
+const [paymentInstructions, setPaymentInstructions] = useState("");
+const [requireScreenshot, setRequireScreenshot] = useState(false);
+const [paymentFile, setPaymentFile] = useState<File | null>(null);
+
+const [limitParticipants, setLimitParticipants] = useState(false);
+const [maxParticipants, setMaxParticipants] = useState("");
   // --- FETCH ALL DATA ---
   useEffect(() => {
   const fetchData = async () => {
@@ -275,6 +283,27 @@ const handleSubmitEvent = async (e: React.FormEvent) => {
     }
 
     posterURL = data.secure_url;
+    if (!form.title || !form.description || !form.date || !form.time || !form.location) {
+  toast.error("Fill all required fields");
+  return;
+}
+
+if (!eventType) {
+  toast.error("Select event type");
+  return;
+}
+
+if (eventType === "paid") {
+  if (!upiId || !paymentInstructions) {
+    toast.error("Payment details required");
+    return;
+  }
+}
+
+if (limitParticipants && !maxParticipants) {
+  toast.error("Enter max participants");
+  return;
+}
   } catch (err) {
     console.error("Upload failed:", err);
     toast.error("Image upload failed");
@@ -307,10 +336,26 @@ const handleSubmitEvent = async (e: React.FormEvent) => {
       const docRef = doc(collection(db, "events"));
 
       const newEvent = {
-        ...form,
-        posterURL,
-        clubId, // ✅ correct
-      };
+  ...form,
+  posterURL,
+  clubId, // keep this if already added
+
+  eventType,
+
+  ...(eventType === "paid" && {
+    upiId,
+    paymentInstructions,
+    requireScreenshot,
+  }),
+
+  limitParticipants,
+
+  ...(limitParticipants && {
+    maxParticipants: Number(maxParticipants),
+  }),
+
+  registeredCount: 0,
+};
 
       await setDoc(docRef, newEvent);
 
@@ -471,7 +516,7 @@ const handleSubmitEvent = async (e: React.FormEvent) => {
             onClick={resetForm}
           >
             <motion.div
-              className="bg-card p-6 rounded-xl w-full max-w-lg"
+              className="bg-card p-6 rounded-xl w-full max-w-lg max-h-[80vh] overflow-y-auto"
               onClick={e => e.stopPropagation()}
             >
               <h3 className="font-bold text-lg mb-4">
@@ -504,11 +549,6 @@ const handleSubmitEvent = async (e: React.FormEvent) => {
                   value={form.location}
                   onChange={e => setForm({ ...form, location: e.target.value })}
                 />
-                <Input
-                  placeholder="Registration Link"
-                  value={form.registrationLink}
-                  onChange={e => setForm({ ...form, registrationLink: e.target.value })}
-                />
                 <div className="mt-3">
                   <label className="text-sm font-medium">Event Poster</label>
                   <input
@@ -525,6 +565,81 @@ const handleSubmitEvent = async (e: React.FormEvent) => {
                     className="mt-3 rounded-lg w-full h-40 object-cover"
                   />
                 )}
+                {/* 🔥 EVENT TYPE */}
+<div className="space-y-2">
+  <label className="font-semibold">Event Type *</label>
+  <div className="flex gap-4">
+    <label>
+      <input
+        type="radio"
+        checked={eventType === "free"}
+        onChange={() => setEventType("free")}
+      />
+      Free Event
+    </label>
+
+    <label>
+      <input
+        type="radio"
+        checked={eventType === "paid"}
+        onChange={() => setEventType("paid")}
+      />
+      Paid Event
+    </label>
+  </div>
+</div>
+{/* 🔥 PAYMENT SECTION */}
+{eventType === "paid" && (
+  <div className="space-y-3">
+    <Input
+      placeholder="UPI ID *"
+      value={upiId}
+      onChange={(e) => setUpiId(e.target.value)}
+    />
+
+    <Input
+      placeholder="Payment Instructions *"
+      value={paymentInstructions}
+      onChange={(e) => setPaymentInstructions(e.target.value)}
+    />
+
+    {/* Toggle */}
+    <div className="flex items-center justify-between">
+      <span>Require Payment Screenshot</span>
+      <input
+        type="checkbox"
+        checked={requireScreenshot}
+        onChange={() => setRequireScreenshot(!requireScreenshot)}
+      />
+    </div>
+
+    {requireScreenshot && (
+      <input
+        type="file"
+        onChange={(e) => setPaymentFile(e.target.files?.[0] || null)}
+      />
+    )}
+  </div>
+)}
+{/* 🔥 PARTICIPANT LIMIT */}
+<div className="space-y-3">
+  <div className="flex items-center justify-between">
+    <span>Limit Participants</span>
+    <input
+      type="checkbox"
+      checked={limitParticipants}
+      onChange={() => setLimitParticipants(!limitParticipants)}
+    />
+  </div>
+
+  {limitParticipants && (
+    <Input
+      placeholder="Max Participants *"
+      value={maxParticipants}
+      onChange={(e) => setMaxParticipants(e.target.value)}
+    />
+  )}
+</div>
                 <Button type="submit" className="w-full bg-secondary">
                   {editingId ? "Update Event" : "Create Event"}
                 </Button>
