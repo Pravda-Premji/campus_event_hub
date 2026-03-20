@@ -45,14 +45,7 @@ function App() {
 />
 
 {/* Admin Protected */}
-<Route
-  path="/admin"
-  element={
-    <ProtectedRoute allowed={["admin", "club_admin"]}>
-      <AdminHome />
-    </ProtectedRoute>
-  }
-/>
+<Route path="/admin" element={<AdminHome />} />
       </Routes>
 
       {/* Toasts */}
