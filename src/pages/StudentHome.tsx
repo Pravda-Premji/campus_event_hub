@@ -59,6 +59,8 @@ const StudentHome = () => {
   const [photoURL, setPhotoURL] = useState("");
 
   const [events, setEvents] = useState<EventItem[]>([]);
+
+
   const [searchQuery, setSearchQuery] = useState("");
 
   const [activeTab, setActiveTab] =
@@ -82,16 +84,22 @@ const StudentHome = () => {
 
       return {
         id: doc.id,
-    title: data.title || "",
-    description: data.description || "",
-    date: typeof data.date === "string"
-      ? data.date
-      : data.date?.seconds
-      ? new Date(data.date.seconds * 1000).toLocaleDateString()
-      : "",
-    time: data.time || "",
-    location: data.location || "",
-    registrationLink: data.registrationLink || "",
+        title: data.title || "",
+        description: data.description || "",
+       date:
+  typeof data.date === "string"
+    ? data.date
+    : data.date?.seconds
+    ? new Date(data.date.seconds * 1000).toLocaleDateString()
+    : "",
+       time:
+  typeof data.time === "string"
+    ? data.time
+    : "",
+        location: data.location || "",
+        registrationLink: data.registrationLink || "",
+        club: data.club || "",
+        registered: false,
       };
     });
 
@@ -160,10 +168,10 @@ const StudentHome = () => {
 
   /* ---------------- FILTER EVENTS ---------------- */
 
-  const filteredEvents = events.filter((e) =>
-    e.title.toLowerCase().includes(searchQuery.toLowerCase())
-  );
 
+ const filteredEvents = events.filter((e) =>
+  (e.title || "").toLowerCase().includes(searchQuery.toLowerCase())
+);
   /* ---------------- IMAGE UPLOAD ---------------- */
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -420,8 +428,8 @@ const StudentHome = () => {
                   <div>
                     <h3 className="font-semibold">{event.title}</h3>
                     <div className="text-sm text-muted-foreground">
- {event.club ?? ""} • {event.date ?? ""}
-</div>
+                      {event.club||""} • {event.date||""}
+                    </div>
                   </div>
 
                   <Button

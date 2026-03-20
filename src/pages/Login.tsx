@@ -181,8 +181,8 @@ console.log("ROLE FROM FIRESTORE:", data.role);
       <motion.div className="w-full max-w-md">
 
         <div className="text-center mb-6">
-          <Calendar className="mx-auto h-8 w-8 text-secondary" />
-          <h1 className="text-2xl font-bold mt-2">
+          <Calendar className="mx-auto h-8 w-8 text-white" />
+          <h1 className="text-2xl font-bold text-white">
             {isSignUp ? "Create Account" : "Welcome Back"}
           </h1>
         </div>
