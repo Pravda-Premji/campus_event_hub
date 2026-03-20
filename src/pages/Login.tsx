@@ -32,6 +32,7 @@ const Login = () => {
 
   const [isSignUp, setIsSignUp] = useState(false);
   const [showForgot, setShowForgot] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   const [confirmPassword, setConfirmPassword] = useState("");
   const [email, setEmail] = useState("");
@@ -39,7 +40,7 @@ const Login = () => {
   const [name, setName] = useState("");
   const [forgotEmail, setForgotEmail] = useState("");
 
-  // ================= SIGNUP / LOGIN =================
+  // ================= MAIN SUBMIT =================
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -48,15 +49,18 @@ const Login = () => {
       return;
     }
 
+    if (loading) return;
+    setLoading(true);
+
     try {
-      // ---------- SIGN UP ----------
+      // ================= SIGN UP =================
       if (isSignUp) {
         if (password !== confirmPassword) {
           toast.error("Passwords do not match");
+          setLoading(false);
           return;
         }
 
-        // Check allowed_users
         const q = query(
           collection(db, "allowed_users"),
           where("email", "==", email)
@@ -64,7 +68,8 @@ const Login = () => {
         const allowed = await getDocs(q);
 
         if (allowed.empty) {
-          toast.error("User not allowed");
+          toast.error("You are not allowed to register. Contact admin.");
+          setLoading(false);
           return;
         }
 
@@ -76,7 +81,7 @@ const Login = () => {
         if (name) await updateProfile(user, { displayName: name });
 
         await setDoc(doc(db, "users", user.uid), {
-          name,
+          name: name || "",
           email,
           role: allowedData.role,
           club: allowedData.club || null,
@@ -84,74 +89,73 @@ const Login = () => {
 
         await sendEmailVerification(user);
 
-        toast.success(
-          "Verification email sent. Please verify and then login.",
-          { duration: 5000 }
-        );
-
+        toast.success("Account created! A verification email has been sent. Please verify before logging in.");
+        setIsSignUp(false);
+        setPassword("");
+        setConfirmPassword("");
+        setLoading(false);
         return;
       }
 
-      // ---------- LOGIN ----------
+      // ================= LOGIN =================
       const cred = await signInWithEmailAndPassword(auth, email, password);
-      const user = cred.user;
 
-      // Ensure latest verification state
-      await user.reload();
+      // ✅ FIX: Reload and then read from auth.currentUser (not stale cred.user)
+      await cred.user.reload();
+      const user = auth.currentUser;
+
+      if (!user) {
+        toast.error("Authentication failed. Please try again.");
+        setLoading(false);
+        return;
+      }
 
       if (!user.emailVerified) {
-        toast.dismiss();
-        toast.error("Please verify your email first");
+        toast.error("Please verify your email before logging in. Check your inbox.");
+        setLoading(false);
         return;
       }
 
       const snap = await getDoc(doc(db, "users", user.uid));
+
       if (!snap.exists()) {
-        toast.error("User data missing");
+        toast.error("User profile not found. Contact admin.");
+        setLoading(false);
         return;
       }
 
-      const data = snap.data() as any;
+      const data = snap.data() as { role?: string; name?: string; club?: string };
 
-console.log("FULL USER DATA:", data);
-
-// 🚨 SAFETY CHECK
-if (!data || !data.role) {
-  toast.error("Role not assigned in database");
-  return;
-}
-
-      // Role‑based redirect
-      if (data.role === "student") {
-  navigate("/student", { replace: true });
-} else if (data.role === "admin" || data.role === "club_admin") {
-  navigate("/admin", { replace: true });
-} else {
-  toast.error("Invalid role");
-}
-    } catch (err: unknown) {
-      if (err && typeof err === "object" && "code" in err) {
-        const firebaseError = err as { code: string };
-
-        switch (firebaseError.code) {
-          case "auth/email-already-in-use":
-            toast.error("Email already registered");
-            break;
-          case "auth/user-not-found":
-            toast.error("User not found");
-            break;
-          case "auth/wrong-password":
-            toast.error("Wrong password");
-            break;
-          case "auth/invalid-email":
-            toast.error("Invalid email");
-            break;
-          default:
-            toast.error("Something went wrong");
-        }
-      } else {
-        toast.error("Unexpected error occurred");
+      if (!data?.role) {
+        toast.error("No role assigned to your account. Contact admin.");
+        setLoading(false);
+        return;
       }
+
+      if (data.role === "student") {
+        navigate("/student", { replace: true });
+        return;
+      }
+
+      if (data.role === "admin" || data.role === "club_admin") {
+        navigate("/admin", { replace: true });
+        return;
+      }
+
+      toast.error("Unrecognized role. Contact admin.");
+
+    } catch (err: unknown) {
+  console.error("AUTH ERROR:", err);
+
+  if (err instanceof Error) {
+    console.log(err.message);
+  }
+
+  const error = err as { code?: string; message?: string };
+
+  const code = error.code ?? "";
+}finally {
+      setLoading(false);
     }
   };
 
@@ -160,24 +164,35 @@ if (!data || !data.role) {
     e.preventDefault();
 
     if (!forgotEmail) {
-      toast.error("Enter email");
+      toast.error("Please enter your email address.");
       return;
     }
 
     try {
       await sendPasswordResetEmail(auth, forgotEmail);
-      toast.success("Password reset email sent");
+      toast.success("Password reset email sent. Check your inbox.");
       setShowForgot(false);
       setForgotEmail("");
-    } catch {
-      toast.error("Failed to send reset email");
-    }
+    } catch (err: unknown) {
+  const error = err as { code?: string };
+
+  const code: string = error.code ?? "";
+
+  if (code === "auth/user-not-found" || code === "auth/invalid-email") {
+    toast.error("No account found with that email.");
+  } else {
+    toast.error("Failed to send reset email. Please try again.");
+  }
+}
   };
 
   return (
     <div className="min-h-screen bg-hero flex items-center justify-center p-6 relative">
 
-      <button onClick={() => navigate("/")} className="absolute top-6 left-6 flex gap-2">
+      <button
+        onClick={() => navigate("/")}
+        className="absolute top-6 left-6 flex items-center gap-2 text-white"
+      >
         <ArrowLeft className="h-4 w-4" /> Back
       </button>
 
@@ -185,7 +200,7 @@ if (!data || !data.role) {
 
         <div className="text-center mb-6">
           <Calendar className="mx-auto h-8 w-8 text-white" />
-          <h1 className="text-2xl font-bold text-white">
+          <h1 className="text-2xl font-bold text-white mt-2">
             {isSignUp ? "Create Account" : "Welcome Back"}
           </h1>
         </div>
@@ -195,38 +210,66 @@ if (!data || !data.role) {
           <form onSubmit={handleSubmit} className="space-y-4">
 
             {isSignUp && (
-              <>
+              <div className="space-y-1">
                 <Label>Full Name</Label>
-                <Input value={name} onChange={(e) => setName(e.target.value)} />
-              </>
+                <Input
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Your full name"
+                />
+              </div>
             )}
 
-            <Label>Email</Label>
-            <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+            <div className="space-y-1">
+              <Label>Email</Label>
+              <Input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="you@example.com"
+                autoComplete="email"
+              />
+            </div>
 
-            <Label>Password</Label>
-            <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
+            <div className="space-y-1">
+              <Label>Password</Label>
+              <Input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                autoComplete={isSignUp ? "new-password" : "current-password"}
+              />
+            </div>
 
             {isSignUp && (
-              <>
+              <div className="space-y-1">
                 <Label>Confirm Password</Label>
                 <Input
                   type="password"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="••••••••"
+                  autoComplete="new-password"
                 />
-              </>
+              </div>
             )}
 
-            <Button type="submit" className="w-full bg-secondary">
-  {isSignUp ? "Create Account" : "Sign In"}
-</Button>
+            <Button
+              type="submit"
+              disabled={loading}
+              className="w-full bg-secondary"
+            >
+              {loading ? "Processing..." : isSignUp ? "Create Account" : "Sign In"}
+            </Button>
+
           </form>
 
           {!isSignUp && (
             <button
+              type="button"
               onClick={() => setShowForgot(true)}
-              className="text-sm mt-3 w-full text-muted-foreground"
+              className="text-sm mt-3 w-full text-muted-foreground hover:underline"
             >
               Forgot password?
             </button>
@@ -234,34 +277,67 @@ if (!data || !data.role) {
 
           <div className="mt-4 text-center">
             <button
-              onClick={() => setIsSignUp(!isSignUp)}
-              className="text-secondary text-sm font-semibold"
+              type="button"
+              onClick={() => {
+                setIsSignUp(!isSignUp);
+                setPassword("");
+                setConfirmPassword("");
+              }}
+              className="text-secondary text-sm font-semibold hover:underline"
             >
               {isSignUp
                 ? "Already have an account? Sign In"
                 : "Don't have an account? Sign Up"}
             </button>
           </div>
+
         </div>
       </motion.div>
 
-      {/* Forgot Password Popup */}
+      {/* Forgot Password Modal */}
       <AnimatePresence>
         {showForgot && (
-          <motion.div className="fixed inset-0 bg-black/40 flex items-center justify-center">
-            <div className="bg-card p-6 rounded-xl w-full max-w-sm">
-              <form onSubmit={handleForgotPassword}>
-                <Label>Email</Label>
-                <Input
-                  type="email"
-                  value={forgotEmail}
-                  onChange={(e) => setForgotEmail(e.target.value)}
-                />
-                <Button type="submit" className="w-full bg-secondary">
-  Send Reset Link
-</Button>
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/40 flex items-center justify-center z-50"
+            onClick={() => setShowForgot(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-card p-6 rounded-xl w-full max-w-sm mx-4"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h2 className="text-lg font-semibold mb-4">Reset Password</h2>
+              <form onSubmit={handleForgotPassword} className="space-y-4">
+                <div className="space-y-1">
+                  <Label>Email Address</Label>
+                  <Input
+                    type="email"
+                    value={forgotEmail}
+                    onChange={(e) => setForgotEmail(e.target.value)}
+                    placeholder="you@example.com"
+                    autoFocus
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="flex-1"
+                    onClick={() => setShowForgot(false)}
+                  >
+                    Cancel
+                  </Button>
+                  <Button type="submit" className="flex-1 bg-secondary">
+                    Send Reset Link
+                  </Button>
+                </div>
               </form>
-            </div>
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
