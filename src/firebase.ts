@@ -17,6 +17,5 @@ const app = initializeApp(firebaseConfig);
 //export const storage = getStorage(app);
 export const auth = getAuth(app);
 export const db = getFirestore(app);
-export const storage = getStorage(app); // ✅ THIS LINE WAS MISSING
 
 console.log(import.meta.env.VITE_FIREBASE_API_KEY);
