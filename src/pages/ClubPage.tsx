@@ -1,118 +1,175 @@
 import { useParams, useNavigate } from "react-router-dom";
-import { motion } from "framer-motion";
-import { ArrowLeft, Calendar, MapPin, Users } from "lucide-react";
+import { useEffect, useState } from "react";
+import { db } from "@/firebase";
+import {
+  doc,
+  getDoc,
+  collection,
+  query,
+  where,
+  getDocs,
+} from "firebase/firestore";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { toast } from "sonner";
-
-const clubData: Record<string, { description: string; events: { title: string; date: string; location: string }[] }> = {
-  "FOSS Club": {
-    description: "The Free and Open Source Software Club promotes open-source culture, organizes hackathons, coding workshops, and contributes to real-world projects.",
-    events: [
-      { title: "Hackathon 2026", date: "2026-03-15", location: "Lab 301" },
-      { title: "Git Workshop", date: "2026-04-02", location: "Lab 201" },
-    ],
-  },
-  "Robotics Club": {
-    description: "Build, innovate, compete. The Robotics Club brings together makers and engineers to design robots, participate in national competitions, and explore automation.",
-    events: [
-      { title: "Robo Wars", date: "2026-03-20", location: "Ground Floor" },
-      { title: "Arduino Bootcamp", date: "2026-04-10", location: "Electronics Lab" },
-    ],
-  },
-  "IEEE": {
-    description: "The IEEE Student Branch connects students with cutting-edge technology through tech talks, paper presentations, and industry interactions.",
-    events: [
-      { title: "Tech Talk: AI", date: "2026-02-20", location: "Seminar Hall" },
-      { title: "Paper Presentation", date: "2026-03-28", location: "Conference Room" },
-    ],
-  },
-  "Orenda": {
-    description: "Orenda is the entrepreneurship and management club that nurtures startup ideas through pitch competitions, business workshops, and mentorship programs.",
-    events: [
-      { title: "Startup Pitch", date: "2026-03-25", location: "Conference Room" },
-    ],
-  },
-  "Navarasa": {
-    description: "Navaras celebrates the nine emotions through performing arts — dance, drama, music, and fine arts. It's the heartbeat of cultural expression on campus.",
-    events: [
-      { title: "Dance Battle", date: "2026-02-20", location: "Auditorium" },
-      { title: "Music Night", date: "2026-04-05", location: "Open Air Theatre" },
-    ],
-  },
-};
 
 const ClubPage = () => {
-  const { clubName } = useParams<{ clubName: string }>();
+  const { clubId } = useParams(); // ✅ USE clubId (NOT name)
   const navigate = useNavigate();
-  const decoded = decodeURIComponent(clubName || "");
-  const club = clubData[decoded];
+  console.log("clubId:", clubId);
 
+  const [club, setClub] = useState<any>(null);
+  const [events, setEvents] = useState<any[]>([]);
+  const [execom, setExecom] = useState<any[]>([]);
+const [selectedImage, setSelectedImage] = useState<string | null>(null);
+useEffect(() => {
+  if (!clubId) return;
+
+  const fetchData = async () => {
+    try {
+      console.log("Fetching club:", clubId);
+
+      // ✅ CLUB
+      const clubRef = doc(db, "clubs", clubId);
+      const clubSnap = await getDoc(clubRef);
+
+      if (clubSnap.exists()) {
+        console.log("Club found:", clubSnap.data());
+        setClub(clubSnap.data());
+      } else {
+        console.log("No club found");
+      }
+
+      // ✅ EXECOM
+      const execomSnap = await getDocs(
+        query(collection(db, "execomMembers"), where("clubId", "==", clubId))
+      );
+
+      console.log("Execom count:", execomSnap.docs.length);
+
+      setExecom(
+        execomSnap.docs.map(d => ({
+          id: d.id,
+          ...d.data(),
+        }))
+      );
+
+      // ✅ EVENTS
+      const eventsSnap = await getDocs(
+        query(collection(db, "events"), where("clubId", "==", clubId))
+      );
+
+      console.log("Events count:", eventsSnap.docs.length);
+
+      setEvents(
+        eventsSnap.docs.map(d => ({
+          id: d.id,
+          ...d.data(),
+        }))
+      );
+
+    } catch (err) {
+      console.error("ERROR:", err);
+    }
+  };
+
+  fetchData();
+}, [clubId]);
+  // ❌ IF CLUB NOT FOUND
   if (!club) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <h1 className="font-display text-2xl font-bold text-foreground mb-2">Club not found</h1>
-          <Button onClick={() => navigate("/student")} variant="outline">Go back</Button>
-        </div>
+      <div className="min-h-screen flex items-center justify-center">
+        <p>Loading club...</p>
       </div>
     );
   }
 
-  return (
-    <div className="min-h-screen bg-background">
-      <header className="bg-primary py-6 px-6">
-        <div className="container mx-auto flex items-center gap-4">
-          <button onClick={() => navigate("/student")} className="text-primary-foreground/60 hover:text-primary-foreground">
-            <ArrowLeft className="h-5 w-5" />
-          </button>
-          <div>
-            <h1 className="font-display text-2xl font-bold text-primary-foreground">{decoded}</h1>
-            <p className="text-primary-foreground/50 text-sm">Club Page</p>
-          </div>
-        </div>
-      </header>
+ return (
+  <div className="min-h-screen p-6">
 
-      <div className="container mx-auto px-6 py-10 max-w-3xl">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="bg-card rounded-2xl p-8 shadow-card mb-8"
-        >
-          <h2 className="font-display text-xl font-bold text-foreground mb-3">About</h2>
-          <p className="text-muted-foreground leading-relaxed">{club.description}</p>
-        </motion.div>
+    {/* 🔙 BACK */}
+    <button onClick={() => navigate("/student")}>
+      ← Back
+    </button>
 
-        <h2 className="font-display text-xl font-bold text-foreground mb-4">Events</h2>
-        <div className="space-y-4">
-          {club.events.map((event, i) => (
-            <motion.div
-              key={event.title}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.1 }}
-              className="bg-card rounded-xl p-5 shadow-card flex items-center justify-between"
-            >
-              <div>
-                <h3 className="font-display font-semibold text-foreground">{event.title}</h3>
-                <div className="flex items-center gap-4 text-muted-foreground text-sm mt-1">
-                  <span className="flex items-center gap-1"><Calendar className="h-3.5 w-3.5" />{event.date}</span>
-                  <span className="flex items-center gap-1"><MapPin className="h-3.5 w-3.5" />{event.location}</span>
-                </div>
-              </div>
-              <Button
-                size="sm"
-                className="bg-secondary text-secondary-foreground hover:bg-secondary/90"
-                onClick={() => toast.success("Registered for " + event.title)}
-              >
-                Register
-              </Button>
-            </motion.div>
-          ))}
+    {/* 🟢 CLUB DETAILS */}
+    <h1 className="text-2xl font-bold mt-4">{club?.name}</h1>
+    <p className="text-muted-foreground mt-2">{club?.intro}</p>
+
+    {/* 🟢 GALLERY */}
+    <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mt-4">
+      {club?.gallery?.map((img: string, i: number) => (
+        <img
+          key={i}
+          src={img}
+          onClick={() => setSelectedImage(img)}
+          className="w-full h-32 object-cover rounded-lg cursor-pointer hover:scale-105 transition"
+        />
+      ))}
+    </div>
+
+    {/* 🟢 IMAGE MODAL */}
+    {selectedImage && (
+      <div
+        className="fixed inset-0 bg-black/80 flex items-center justify-center z-50"
+        onClick={() => setSelectedImage(null)}
+      >
+        <img
+          src={selectedImage}
+          className="max-h-[80%] max-w-[90%] rounded-lg"
+        />
+      </div>
+    )}
+
+    {/* 🟢 EXECOM */}
+<h2 className="mt-6 font-semibold text-lg">Execom Members</h2>
+
+<div className="space-y-3 mt-2">
+  {execom.length === 0 ? (
+    <p>No members yet</p>
+  ) : (
+    execom.map((m) => (
+      <div
+        key={m.id}
+        className="flex items-center gap-3 p-3 border rounded"
+      >
+        {/* IMAGE */}
+        <img
+          src={m.imageURL}
+          alt={m.name}
+          className="w-12 h-12 rounded-full object-cover"
+        />
+
+        {/* TEXT */}
+        <div>
+          <p className="font-semibold">{m.name}</p>
+          <p className="text-sm text-muted-foreground">{m.role}</p>
         </div>
       </div>
+    ))
+  )}
+</div>
+    {/* 🟢 EVENTS */}
+    <h2 className="mt-6 font-semibold text-lg">Events</h2>
+    <div className="space-y-3 mt-2">
+      {events.length === 0 ? (
+        <p>No events yet</p>
+      ) : (
+        events.map((e) => (
+          <div
+            key={e.id}
+            onClick={() => navigate(`/student/event/${e.id}`)}
+            className="p-4 border rounded cursor-pointer hover:bg-muted"
+          >
+            <h3 className="font-semibold">{e.title}</h3>
+            <p className="text-sm text-muted-foreground">
+              {e.date} • {e.location}
+            </p>
+          </div>
+        ))
+      )}
     </div>
-  );
+
+  </div>
+);
 };
 
 export default ClubPage;

@@ -1,21 +1,17 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { motion, AnimatePresence } from "framer-motion";
-import {
-  Calendar, LogOut, Plus, Trash2, Edit3, Link as LinkIcon, Clock, MapPin
-} from "lucide-react";
+import { Calendar, LogOut, Plus, Trash2, Edit3, Clock, MapPin } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { signOut } from "firebase/auth";
 import { auth, db } from "@/firebase";
-import { collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc } from "firebase/firestore";
-
-
-   import { addDoc, query, where} from "firebase/firestore"; // add at top
-
-// Type definitions
+import {
+  collection, doc, getDocs, setDoc, updateDoc, deleteDoc, query, where
+} from "firebase/firestore";
+import { addDoc, getDoc} from "firebase/firestore";
+import { arrayUnion } from "firebase/firestore";
 interface EventItem {
   id: string;
   title: string;
@@ -23,198 +19,265 @@ interface EventItem {
   date: string;
   time: string;
   location: string;
-  registrationLink: string;
   posterURL?: string;
-}
-
-interface ExecomMember {
-  id: string;
-  name: string;
-  role: string;
-  imageURL?: string;
-}
-
-interface ClubProfile {
-  name: string;
-  intro: string;
-  flagshipEvent: string;
+  eventType: "free" | "paid";
+  requireScreenshot?: boolean;
 }
 
 const AdminHome = () => {
   const navigate = useNavigate();
 
-  const [clubProfile, setClubProfile] = useState<ClubProfile>({
-    name: "",
-    intro: "",
-    flagshipEvent: "",
-  });
-  const [execom, setExecom] = useState<ExecomMember[]>([]);
   const [events, setEvents] = useState<EventItem[]>([]);
-
-  const [member, setMember] = useState({ name: "", role: "" });
-  const [memberImage, setMemberImage] = useState<File | null>(null);
-
-  const [poster, setPoster] = useState<File | null>(null);
-  const [showForm, setShowForm] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
-
   const [form, setForm] = useState({
     title: "",
     description: "",
     date: "",
     time: "",
     location: "",
-    registrationLink: "",
   });
-  const [eventType, setEventType] = useState<"free" | "paid">("free");
 
-const [upiId, setUpiId] = useState("");
-const [paymentInstructions, setPaymentInstructions] = useState("");
-const [requireScreenshot, setRequireScreenshot] = useState(false);
-const [paymentFile, setPaymentFile] = useState<File | null>(null);
-const [clubId, setClubId] = useState("");
-const [limitParticipants, setLimitParticipants] = useState(false);
-const [maxParticipants, setMaxParticipants] = useState("");
-  // --- FETCH ALL DATA ---
-  useEffect(() => {
+  const [poster, setPoster] = useState<File | null>(null);
+  const [eventType, setEventType] = useState<"free" | "paid">("free");
+  const [requireScreenshot, setRequireScreenshot] = useState(false);
+
+  const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+
+  const [registrations, setRegistrations] = useState<any[]>([]);
+  const [selectedEventId, setSelectedEventId] = useState("");
+
+  const [clubId, setClubId] = useState("");
+  const [clubProfile, setClubProfile] = useState({
+  name: "",
+  intro: "",
+  flagshipEvent: "",
+});
+
+const [execom, setExecom] = useState<any[]>([]);
+const [member, setMember] = useState({ name: "", role: "" });
+const [memberImage, setMemberImage] = useState<File | null>(null);
+const [galleryFiles, setGalleryFiles] = useState<File[]>([]);
+
+  // ✅ FETCH EVENTS
+ useEffect(() => {
   const fetchData = async () => {
     try {
       const user = auth.currentUser;
       if (!user?.email) return;
 
-      // 🔥 FIXED: FETCH CLUB FROM "clubs" COLLECTION
-      const q = query(
+      // ✅ STEP 1: GET CLUB
+      const clubQuery = query(
         collection(db, "clubs"),
         where("adminEmail", "==", user.email)
       );
 
-      const clubSnap = await getDocs(q);
+      const clubSnap = await getDocs(clubQuery);
 
-      if (!clubSnap.empty) {
-      const doc = clubSnap.docs[0];
-  const data = doc.data();
-
-  setClubId(doc.id);
-
-        setClubProfile({
-          name: data.name || "",
-          intro: data.intro || "",
-          flagshipEvent: data.flagshipEvent || "",
-        });
+      if (clubSnap.empty) {
+        console.log("No club found");
+        return;
       }
 
-      // ✅ KEEP THESE SAME (UNCHANGED)
-     const execomQuery = query(
-  collection(db, "execomMembers"),
-  where("clubId", "==", clubId)
-);
+      const clubDoc = clubSnap.docs[0];
+      const clubId = clubDoc.id;
 
-const execomSnap = await getDocs(execomQuery);
+      console.log("Club ID:", clubId); // 🔥 DEBUG
 
-setExecom(
-  execomSnap.docs.map(d => ({
-    id: d.id,
-    ...(d.data() as ExecomMember),
-  }))
-);
-const eventsQuery = query(
-  collection(db, "events"),
-  where("clubId", "==", clubId)
-);
+      setClubId(clubId);
 
-const eventsSnap = await getDocs(eventsQuery);
+      const clubData = clubDoc.data();
 
-setEvents(
-  eventsSnap.docs.map(d => ({
-    id: d.id,
-    ...(d.data() as EventItem),
-  }))
-);
+      setClubProfile({
+        name: clubData.name || "",
+        intro: clubData.intro || "",
+        flagshipEvent: clubData.flagshipEvent || "",
+      });
+
+      // ✅ STEP 2: FETCH EXECOM
+      const execomSnap = await getDocs(
+        query(collection(db, "execomMembers"), where("clubId", "==", clubId))
+      );
+
+      console.log("Execom:", execomSnap.docs.length); // DEBUG
+
+      setExecom(
+        execomSnap.docs.map(d => ({
+          id: d.id,
+          ...d.data(),
+        }))
+      );
+
+      // ✅ STEP 3: FETCH EVENTS
+      const eventsSnap = await getDocs(
+        query(collection(db, "events"), where("clubId", "==", clubId))
+      );
+
+      console.log("Events:", eventsSnap.docs.length); // DEBUG
+
+      setEvents(
+        eventsSnap.docs.map(d => ({
+          id: d.id,
+          ...(d.data() as EventItem),
+        }))
+      );
+
     } catch (err) {
-      console.error("Error loading data:", err);
+      console.error("FETCH ERROR:", err);
     }
   };
 
   fetchData();
 }, []);
 
-  // --- CLUB PROFILE SAVE ---
- const handleSaveClubProfile = async () => {
-  try {
-    const user = auth.currentUser;
+  // ✅ LOAD REGISTRATIONS
+  const loadRegistrations = async (eventId: string) => {
+    const q = query(collection(db, "registrations"), where("eventId", "==", eventId));
+    const snap = await getDocs(q);
+    setRegistrations(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+  };
 
-    if (!user?.email) {
-      toast.error("User not logged in");
+  // ✅ RESET
+  const resetForm = () => {
+    setForm({ title: "", description: "", date: "", time: "", location: "" });
+    setPoster(null);
+    setEditingId(null);
+    setShowForm(false);
+  };
+
+  // ✅ CREATE / UPDATE EVENT
+  const handleSubmitEvent = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!form.title || !form.date) {
+      toast.error("Fill required fields");
       return;
     }
 
-    const clubsRef = collection(db, "clubs");
+    let posterURL = "";
 
-    // 🔍 check if this admin already has a club
-    const q = query(clubsRef, where("adminEmail", "==", user.email));
+    if (poster) {
+      const formData = new FormData();
+      formData.append("file", poster);
+      formData.append("upload_preset", "campus_upload");
+
+      const res = await fetch(
+        "https://api.cloudinary.com/v1_1/drnrkdzfa/image/upload",
+        { method: "POST", body: formData }
+      );
+
+      const data = await res.json();
+      posterURL = data.secure_url;
+    }
+
+    const eventData = {
+      ...form,
+      posterURL,
+      clubId: clubId,
+      eventType,
+      requireScreenshot,
+    };
+
+    if (editingId) {
+      await updateDoc(doc(db, "events", editingId), eventData);
+      toast.success("Event updated");
+    } else {
+      const docRef = doc(collection(db, "events"));
+      await setDoc(docRef, eventData);
+      setEvents(prev => [...prev, { ...eventData, id: docRef.id }]);
+      toast.success("Event created");
+    }
+
+    resetForm();
+  };
+
+  // ✅ DELETE EVENT
+  const handleDeleteEvent = async (id: string) => {
+    await deleteDoc(doc(db, "events", id));
+    setEvents(prev => prev.filter(e => e.id !== id));
+  };
+const handleSaveClubProfile = async () => {
+  try {
+    const user = auth.currentUser;
+    if (!user?.email) return;
+
+    const q = query(
+      collection(db, "clubs"),
+      where("adminEmail", "==", user.email)
+    );
+
     const snap = await getDocs(q);
 
     if (!snap.empty) {
-      // ✅ UPDATE existing club
-      const docRef = snap.docs[0].ref;
-
-      await updateDoc(docRef, {
-        name: clubProfile.name,
-        intro: clubProfile.intro,
-        flagshipEvent: clubProfile.flagshipEvent,
-      });
-
+      await updateDoc(snap.docs[0].ref, clubProfile);
     } else {
-      // ✅ CREATE new club
-      await addDoc(clubsRef, {
-        name: clubProfile.name,
-        intro: clubProfile.intro,
-        flagshipEvent: clubProfile.flagshipEvent,
+      await addDoc(collection(db, "clubs"), {
+        ...clubProfile,
         adminEmail: user.email,
       });
     }
 
-    console.log("Saved to Firestore:", clubProfile); // 🔍 DEBUG
-    toast.success("Club profile saved!");
-
-  } catch (error) {
-    console.error("SAVE ERROR:", error);
-    toast.error("Failed to save club profile");
+    toast.success("Club profile saved");
+  } catch (err) {
+    console.error(err);
+    toast.error("Error saving profile");
   }
 };
-
-  // --- ADD EXECom MEMBER ---
-  const handleAddExecom = async () => {
+const handleAddExecom = async () => {
   if (!member.name || !member.role) {
-    toast.error("Please enter name and role");
+    toast.error("Fill all fields");
     return;
   }
 
-  const user = auth.currentUser;
-  if (!user?.email) return;
+  try {
+    let imageURL = "";
 
-  // 🔥 ADD THIS BLOCK HERE (VERY IMPORTANT)
-  const clubQuery = query(
-    collection(db, "clubs"),
-    where("adminEmail", "==", user.email)
-  );
-
-  const clubSnap = await getDocs(clubQuery);
-
-  if (clubSnap.empty) {
-    toast.error("Club not found");
-    return;
-  }
-
-  const clubId = clubSnap.docs[0].id; // ✅ NOW clubId EXISTS
-
-  // ---------------- IMAGE UPLOAD ----------------
-  let imageURL = "";
-
-  if (memberImage) {
-    try {
+    if (memberImage) {
       const formData = new FormData();
       formData.append("file", memberImage);
+      formData.append("upload_preset", "campus_upload");
+
+      const res = await fetch(
+        "https://api.cloudinary.com/v1_1/drnrkdzfa/image/upload",
+        { method: "POST", body: formData }
+      );
+
+      const data = await res.json();
+      imageURL = data.secure_url;
+    }
+
+    const docRef = doc(collection(db, "execomMembers"));
+
+    const newMember = {
+      name: member.name,
+      role: member.role,
+      imageURL,
+      clubId: clubId,
+    };
+
+    await setDoc(docRef, newMember);
+
+    setExecom(prev => [...prev, { id: docRef.id, ...newMember }]);
+    setMember({ name: "", role: "" });
+    setMemberImage(null);
+
+    toast.success("Member added");
+  } catch (err) {
+    console.error(err);
+  }
+};
+const [selectedImage, setSelectedImage] = useState<string | null>(null);
+const handleUploadGallery = async () => {
+  if (!galleryFiles.length) {
+    toast.error("Select images first");
+    return;
+  }
+
+  try {
+    const urls: string[] = [];
+
+    for (const file of galleryFiles) {
+      const formData = new FormData();
+      formData.append("file", file);
       formData.append("upload_preset", "campus_upload");
 
       const res = await fetch(
@@ -226,469 +289,248 @@ setEvents(
       );
 
       const data = await res.json();
-      imageURL = data.secure_url;
-
-    } catch (err) {
-      console.error("Upload failed:", err);
-      toast.error("Image upload failed");
-      return;
-    }
-  }
-
-  // ---------------- SAVE MEMBER ----------------
-  const newMember = {
-    name: member.name,
-    role: member.role,
-    imageURL,
-    clubId, // ✅ now works
-  };
-
-  const docRef = doc(collection(db, "execomMembers"));
-  await setDoc(docRef, newMember);
-
-  setExecom(prev => [...prev, { id: docRef.id, ...newMember }]);
-  setMember({ name: "", role: "" });
-  setMemberImage(null);
-
-  toast.success("Member added!");
-};
-  // --- DELETE EXECom MEMBER ---
-  const handleDeleteMember = async (id: string) => {
-    await deleteDoc(doc(db, "execomMembers", id));
-    setExecom(prev => prev.filter(m => m.id !== id));
-    toast.success("Member removed");
-  };
-
-  // --- EVENT FORM RESET ---
-  const resetForm = () => {
-    setForm({ title: "", description: "", date: "", time: "", location: "", registrationLink: "" });
-    setPoster(null);
-    setEditingId(null);
-    setShowForm(false);
-  };
-
-  // --- ADD / UPDATE EVENT ---
-const handleSubmitEvent = async (e: React.FormEvent) => {
-  e.preventDefault();
-
-  if (!form.title || !form.date) {
-    toast.error("Please fill required fields");
-    return;
-  }
-
-  try {
-    // 🔥 STEP 1: Get current user
-    const user = auth.currentUser;
-
-    if (!user?.email) {
-      toast.error("User not logged in");
-      return;
+      urls.push(data.secure_url);
     }
 
-    // 🔥 STEP 2: Get clubId (MOVE THIS TO TOP)
-    const q = query(
-      collection(db, "clubs"),
-      where("adminEmail", "==", user.email)
-    );
+    // 🔥 SAVE TO CURRENT CLUB ONLY
+    await updateDoc(doc(db, "clubs", clubId), {
+      gallery: arrayUnion(...urls),
+    });
 
-    const snap = await getDocs(q);
-
-    if (snap.empty) {
-      toast.error("Club not found");
-      return;
-    }
-
-    const clubId = snap.docs[0].id;
-
-    // 🔥 STEP 3: Upload poster (if exists)
-    let posterURL = "";
-
-    if (poster) {
-  try {
-    const formData = new FormData();
-    formData.append("file", poster);
-    formData.append("upload_preset", "campus_upload");
-
-    const res = await fetch(
-      "https://api.cloudinary.com/v1_1/drnrkdzfa/image/upload",
-      {
-        method: "POST",
-        body: formData,
-      }
-    );
-
-    const data = await res.json();
-     console.log("Cloudinary response:", data);
-      if (!res.ok) {
-      throw new Error(data.error?.message || "Upload failed");
-    }
-
-    posterURL = data.secure_url;
-    if (!form.title || !form.description || !form.date || !form.time || !form.location) {
-  toast.error("Fill all required fields");
-  return;
-}
-
-if (!eventType) {
-  toast.error("Select event type");
-  return;
-}
-
-if (eventType === "paid") {
-  if (!upiId || !paymentInstructions) {
-    toast.error("Payment details required");
-    return;
-  }
-}
-
-if (limitParticipants && !maxParticipants) {
-  toast.error("Enter max participants");
-  return;
-}
-  } catch (err) {
-    console.error("Upload failed:", err);
-    toast.error("Image upload failed");
-    return;
-  }
-}
-    // 🔥 STEP 4: UPDATE EVENT
-    if (editingId) {
-      const docRef = doc(db, "events", editingId);
-
-      await updateDoc(docRef, {
-        ...form,
-        posterURL,
-        clubId, // ✅ now available
-      });
-
-      setEvents(prev =>
-        prev.map(e =>
-          e.id === editingId
-            ? { ...form, posterURL, clubId, id: e.id }
-            : e
-        )
-      );
-
-      toast.success("Event updated!");
-    }
-
-    // 🔥 STEP 5: CREATE EVENT
-    else {
-      const docRef = doc(collection(db, "events"));
-
-      const newEvent = {
-  ...form,
-  posterURL,
-  clubId, // keep this if already added
-
-  eventType,
-
-  ...(eventType === "paid" && {
-    upiId,
-    paymentInstructions,
-    requireScreenshot,
-  }),
-
-  limitParticipants,
-
-  ...(limitParticipants && {
-    maxParticipants: Number(maxParticipants),
-  }),
-
-  registeredCount: 0,
-};
-
-      await setDoc(docRef, newEvent);
-
-      setEvents(prev => [...prev, { ...newEvent, id: docRef.id }]);
-
-      toast.success("Event created!");
-    }
-
-    resetForm();
+    toast.success("Gallery updated!");
+    setGalleryFiles([]);
 
   } catch (err) {
     console.error(err);
-    toast.error("Something went wrong");
+    toast.error("Upload failed");
   }
 };
-  // --- DELETE EVENT ---
-  const handleDeleteEvent = async (id: string) => {
-    await deleteDoc(doc(db, "events", id));
-    setEvents(prev => prev.filter(e => e.id !== id));
-    toast.success("Event deleted");
-  };
-
+const handleDeleteMember = async (id: string) => {
+  await deleteDoc(doc(db, "execomMembers", id));
+  setExecom(prev => prev.filter(m => m.id !== id));
+};
   return (
     <div className="min-h-screen bg-background">
+
       {/* HEADER */}
-      <header className="bg-primary px-6 py-4 flex items-center justify-between sticky top-0 z-40">
-        <div className="flex items-center gap-2">
-          <Calendar className="h-6 w-6 text-secondary" />
-          <span className="font-display text-lg font-bold text-primary-foreground">CampusHub</span>
-          <span className="ml-2 px-2 py-0.5 rounded-md bg-secondary/20 text-secondary text-xs font-semibold">
-            Admin
-          </span>
-        </div>
+      <header className="bg-primary px-6 py-4 flex justify-between">
+        <span className="text-white font-bold">Admin Panel</span>
 
         <button
           onClick={async () => {
             await signOut(auth);
-            toast.success("Logged out successfully");
-            navigate("/login", { replace: true });
+            navigate("/login");
           }}
-          className="flex items-center gap-2 text-primary-foreground/60 hover:text-campus-rose text-sm"
+          className="text-white"
         >
-          <LogOut className="h-4 w-4" /> Sign Out
+          <LogOut />
         </button>
       </header>
 
-      <div className="container mx-auto px-6 py-10 max-w-4xl">
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="font-display text-2xl font-bold text-foreground">Manage Events</h1>
-            <p className="text-muted-foreground text-sm">Create, edit, or remove events</p>
-          </div>
+      <div className="p-6">
+        {/* CLUB GALLERY */}
+<h2 className="text-xl font-bold mt-6">Club Gallery</h2>
 
-          <Button
-            onClick={() => { resetForm(); setShowForm(true); }}
-            className="bg-secondary text-secondary-foreground hover:bg-secondary/90 font-semibold gap-2"
-          >
-            <Plus className="h-4 w-4" /> New Event
-          </Button>
-        </div>
+<div className="bg-card p-4 rounded mt-3 space-y-3">
+
+  <input
+    type="file"
+    multiple
+    accept="image/*"
+    onChange={(e) =>
+      setGalleryFiles(Array.from(e.target.files || []))
+    }
+  />
+
+  <Button
+    onClick={handleUploadGallery}
+    className="bg-blue-500 text-white"
+  >
+    Upload Images
+  </Button>
+
+</div>
 
         {/* CLUB PROFILE */}
-        <h2 className="text-2xl font-bold mt-10">Club Profile</h2>
-        <div className="bg-card p-6 rounded-lg mt-4 space-y-4">
-          <Input
-            placeholder="Club Name"
-            value={clubProfile.name}
-            onChange={e => setClubProfile({ ...clubProfile, name: e.target.value })}
-          />
-          <Textarea
-            placeholder="Club Introduction"
-            value={clubProfile.intro}
-            onChange={e => setClubProfile({ ...clubProfile, intro: e.target.value })}
-          />
-          <Input
-            placeholder="Flagship Event Name"
-            value={clubProfile.flagshipEvent}
-            onChange={e => setClubProfile({ ...clubProfile, flagshipEvent: e.target.value })}
-          />
-          <Button onClick={handleSaveClubProfile} className="bg-orange-500 text-white px-4 py-2 rounded">
-            Save Club Profile
-          </Button>
-        </div>
+<h2 className="text-xl font-bold mt-6">Club Profile</h2>
 
-        {/* EXECom MEMBERS */}
-        <h3 className="text-xl font-semibold mt-10">Execom Members</h3>
-        <div className="bg-card p-6 rounded-lg mt-4 space-y-4">
-          <Input
-            placeholder="Member Name"
-            value={member.name}
-            onChange={e => setMember({ ...member, name: e.target.value })}
-          />
-          <Input
-            placeholder="Role (President, Secretary...)"
-            value={member.role}
-            onChange={e => setMember({ ...member, role: e.target.value })}
-          />
-          <input
-            type="file"
-            accept="image/*"
-            onChange={e => setMemberImage(e.target.files?.[0] || null)}
-          />
-          <Button onClick={handleAddExecom} className="bg-orange-500 text-white px-4 py-2 rounded">
-            Save Member
-          </Button>
-        </div>
+<div className="bg-card p-4 rounded mt-3 space-y-3">
+  <Input
+    placeholder="Club Name"
+    value={clubProfile.name}
+    onChange={e => setClubProfile({ ...clubProfile, name: e.target.value })}
+  />
 
-        <div className="mt-4 grid gap-4 grid-cols-1 sm:grid-cols-2 md:grid-cols-3">
-          {execom.map(m => (
-            <div key={m.id} className="bg-card p-4 rounded-lg shadow text-center">
-              {m.imageURL && <img src={m.imageURL} className="w-24 h-24 rounded-full mx-auto object-cover" />}
-              <h4 className="font-semibold mt-2">{m.name}</h4>
-              <p className="text-sm text-muted-foreground">{m.role}</p>
-              <Button size="sm" variant="ghost" onClick={() => handleDeleteMember(m.id)}>
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            </div>
-          ))}
-        </div>
+  <Textarea
+    placeholder="Club Introduction"
+    value={clubProfile.intro}
+    onChange={e => setClubProfile({ ...clubProfile, intro: e.target.value })}
+  />
+
+  <Input
+    placeholder="Flagship Event"
+    value={clubProfile.flagshipEvent}
+    onChange={e => setClubProfile({ ...clubProfile, flagshipEvent: e.target.value })}
+  />
+  <input
+  type="file"
+  multiple
+  onChange={(e) =>
+    setGalleryFiles(Array.from(e.target.files || []))
+  }
+/>
+
+<Button onClick={handleUploadGallery}>
+  Upload Images
+</Button>
+
+  <Button onClick={handleSaveClubProfile}>
+    Save Club Profile
+  </Button>
+</div>
+
+{/* EXECOM */}
+<h2 className="text-xl font-bold mt-6">Execom Members</h2>
+
+<div className="bg-card p-4 rounded mt-3 space-y-3">
+
+  <Input
+    placeholder="Member Name"
+    value={member.name}
+    onChange={e => setMember({ ...member, name: e.target.value })}
+  />
+
+  <Input
+    placeholder="Role"
+    value={member.role}
+    onChange={e => setMember({ ...member, role: e.target.value })}
+  />
+
+  <input
+    type="file"
+    onChange={e => setMemberImage(e.target.files?.[0] || null)}
+  />
+
+  <Button onClick={handleAddExecom}>
+    Add Member
+  </Button>
+</div>
+<div className="grid grid-cols-2 md:grid-cols-3 gap-4 mt-4">
+  {execom.map(m => (
+    <div key={m.id} className="border p-3 rounded text-center">
+
+      {m.imageURL && (
+        <img
+          src={m.imageURL}
+          className="w-20 h-20 rounded-full mx-auto object-cover"
+        />
+      )}
+
+      <p className="font-semibold mt-2">{m.name}</p>
+      <p className="text-sm text-muted-foreground">{m.role}</p>
+
+      <Button size="sm" onClick={() => handleDeleteMember(m.id)}>
+        <Trash2 />
+      </Button>
+    </div>
+  ))}
+</div>
+        {/* CREATE BUTTON */}
+        <Button onClick={() => setShowForm(true)}>
+          <Plus /> New Event
+        </Button>
 
         {/* EVENTS */}
-        <div className="space-y-4 mt-12">
+        <div className="mt-6 space-y-4">
           {events.map(event => (
-            <div key={event.id} className="bg-card rounded-xl p-6 shadow-card">
+            <div key={event.id} className="p-4 border rounded">
+
               {event.posterURL && (
-                <img src={event.posterURL} alt={event.title} className="w-full h-48 object-cover rounded-lg mb-3" />
+                <img src={event.posterURL} className="w-full h-40 object-cover mb-2" />
               )}
-              <h3 className="font-bold text-lg">{event.title}</h3>
-              <p className="text-muted-foreground text-sm">{event.description}</p>
-              <div className="flex gap-4 text-sm mt-2 text-muted-foreground">
-                <span><Calendar className="inline h-4 w-4" /> {event.date}</span>
-                <span><Clock className="inline h-4 w-4" /> {event.time}</span>
-                <span><MapPin className="inline h-4 w-4" /> {event.location}</span>
+
+              <h3 className="font-bold">{event.title}</h3>
+              <p>{event.description}</p>
+
+              <p>{event.date} | {event.time}</p>
+              <p>{event.location}</p>
+
+              <div className="flex gap-2 mt-2">
+                <Button onClick={() => handleDeleteEvent(event.id)}>
+                  <Trash2 />
+                </Button>
+
+                <button
+                   onClick={() =>
+                    navigate(`/admin/registrations/${event.id}`)
+                }
+                className="bg-blue-900 text-white px-4 py-2 rounded"
+            >
+               View Registrations
+            </button>
               </div>
-              {event.registrationLink && (
-                <a href={event.registrationLink} target="_blank" rel="noopener noreferrer" className="text-secondary text-sm mt-2 inline-block hover:underline">
-                  <LinkIcon className="inline h-4 w-4" /> Registration Link
-                </a>
+
+              {/* REGISTRATIONS */}
+              {selectedEventId === event.id && (
+                <div className="mt-3">
+                  {registrations.map(r => (
+                    <div key={r.id} className="border p-2 mt-2">
+                      <p>{r.studentName}</p>
+                      <p>{r.branch}</p>
+                      <p>{r.year}</p>
+
+                      {r.screenshotURL && (
+                        <img src={r.screenshotURL} className="w-32 mt-2" />
+                      )}
+                    </div>
+                  ))}
+                </div>
               )}
-              <div className="mt-4 flex gap-2">
-                <Button size="sm" variant="ghost" onClick={() => { setForm(event); setEditingId(event.id); setShowForm(true); }}>
-                  <Edit3 className="h-4 w-4" />
-                </Button>
-                <Button size="sm" variant="ghost" onClick={() => handleDeleteEvent(event.id)}>
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </div>
+
             </div>
           ))}
         </div>
-      </div>
 
-      {/* EVENT MODAL */}
-      <AnimatePresence>
+        {/* FORM */}
         {showForm && (
-          <motion.div
-            className="fixed inset-0 bg-black/50 flex items-center justify-center p-6"
-            onClick={resetForm}
-          >
-            <motion.div
-              className="bg-card p-6 rounded-xl w-full max-w-lg max-h-[80vh] overflow-y-auto"
-              onClick={e => e.stopPropagation()}
-            >
-              <h3 className="font-bold text-lg mb-4">
-                {editingId ? "Edit Event" : "Create Event"}
-              </h3>
+          <form onSubmit={handleSubmitEvent} className="mt-6 space-y-3">
+            <Input placeholder="Title" onChange={e => setForm({ ...form, title: e.target.value })} />
+            <Textarea placeholder="Description" onChange={e => setForm({ ...form, description: e.target.value })} />
+            <Input type="date" onChange={e => setForm({ ...form, date: e.target.value })} />
+            <Input type="time" onChange={e => setForm({ ...form, time: e.target.value })} />
+            <Input placeholder="Location" onChange={e => setForm({ ...form, location: e.target.value })} />
 
-              <form onSubmit={handleSubmitEvent} className="space-y-3">
-                <Input
-                  placeholder="Title"
-                  value={form.title}
-                  onChange={e => setForm({ ...form, title: e.target.value })}
-                />
-                <Textarea
-                  placeholder="Description"
-                  value={form.description}
-                  onChange={e => setForm({ ...form, description: e.target.value })}
-                />
-                <Input
-                  type="date"
-                  value={form.date}
-                  onChange={e => setForm({ ...form, date: e.target.value })}
-                />
-                <Input
-                  type="time"
-                  value={form.time}
-                  onChange={e => setForm({ ...form, time: e.target.value })}
-                />
-                <Input
-                  placeholder="Location"
-                  value={form.location}
-                  onChange={e => setForm({ ...form, location: e.target.value })}
-                />
-                <div className="mt-3">
-                  <label className="text-sm font-medium">Event Poster</label>
+            <input type="file" onChange={e => setPoster(e.target.files?.[0] || null)} />
+
+            {/* EVENT TYPE */}
+            <div>
+              <label>
+                <input type="radio" checked={eventType === "free"} onChange={() => setEventType("free")} />
+                Free
+              </label>
+              <label>
+                <input type="radio" checked={eventType === "paid"} onChange={() => setEventType("paid")} />
+                Paid
+              </label>
+            </div>
+
+            {eventType === "paid" && (
+              <div>
+                <label>
+                  Require Screenshot
                   <input
-                    type="file"
-                    accept="image/*"
-                    onChange={e => setPoster(e.target.files?.[0] || null)}
-                    className="w-full border rounded-lg p-2 mt-1"
+                    type="checkbox"
+                    checked={requireScreenshot}
+                    onChange={() => setRequireScreenshot(!requireScreenshot)}
                   />
-                </div>
-                {poster && (
-                  <img
-                    src={URL.createObjectURL(poster)}
-                    alt="Poster Preview"
-                    className="mt-3 rounded-lg w-full h-40 object-cover"
-                  />
-                )}
-                {/* 🔥 EVENT TYPE */}
-<div className="space-y-2">
-  <label className="font-semibold">Event Type *</label>
-  <div className="flex gap-4">
-    <label>
-      <input
-        type="radio"
-        checked={eventType === "free"}
-        onChange={() => setEventType("free")}
-      />
-      Free Event
-    </label>
+                </label>
+              </div>
+            )}
 
-    <label>
-      <input
-        type="radio"
-        checked={eventType === "paid"}
-        onChange={() => setEventType("paid")}
-      />
-      Paid Event
-    </label>
-  </div>
-</div>
-{/* 🔥 PAYMENT SECTION */}
-{eventType === "paid" && (
-  <div className="space-y-3">
-    <Input
-      placeholder="UPI ID *"
-      value={upiId}
-      onChange={(e) => setUpiId(e.target.value)}
-    />
-
-    <Input
-      placeholder="Payment Instructions *"
-      value={paymentInstructions}
-      onChange={(e) => setPaymentInstructions(e.target.value)}
-    />
-
-    {/* Toggle */}
-    <div className="flex items-center justify-between">
-      <span>Require Payment Screenshot</span>
-      <input
-        type="checkbox"
-        checked={requireScreenshot}
-        onChange={() => setRequireScreenshot(!requireScreenshot)}
-      />
-    </div>
-
-    {requireScreenshot && (
-      <input
-        type="file"
-        onChange={(e) => setPaymentFile(e.target.files?.[0] || null)}
-      />
-    )}
-  </div>
-)}
-{/* 🔥 PARTICIPANT LIMIT */}
-<div className="space-y-3">
-  <div className="flex items-center justify-between">
-    <span>Limit Participants</span>
-    <input
-      type="checkbox"
-      checked={limitParticipants}
-      onChange={() => setLimitParticipants(!limitParticipants)}
-    />
-  </div>
-
-  {limitParticipants && (
-    <Input
-      placeholder="Max Participants *"
-      value={maxParticipants}
-      onChange={(e) => setMaxParticipants(e.target.value)}
-    />
-  )}
-</div>
-                <Button type="submit" className="w-full bg-secondary">
-                  {editingId ? "Update Event" : "Create Event"}
-                </Button>
-              </form>
-            </motion.div>
-          </motion.div>
+            <Button type="submit">Save</Button>
+          </form>
         )}
-      </AnimatePresence>
+      </div>
     </div>
   );
 };

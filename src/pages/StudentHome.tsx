@@ -35,7 +35,7 @@ interface EventItem {
   location?: string;
   registrationLink?: string;
   club?: string;
-  registered?: boolean;
+  registeredCount?: number;
 }
 
 const clubs = [
@@ -73,7 +73,7 @@ const StudentHome = () => {
     class: "S6 CSE",
     photoURL: "",
   });
-
+const [clubs, setClubs] = useState<any[]>([]);
   /* ---------------- LOAD EVENTS ---------------- */
 
   const loadEvents = async () => {
@@ -99,16 +99,34 @@ const StudentHome = () => {
         location: data.location || "",
         registrationLink: data.registrationLink || "",
         club: data.club || "",
-        registered: false,
+        registeredCount: data.registeredCount || 0,
       };
     });
 
     setEvents(eventList);
   };
 
-  useEffect(() => {
-    loadEvents();
-  }, []);
+ useEffect(() => {
+  const fetchData = async () => {
+    await loadEvents(); // existing
+
+    // 🔥 ADD THIS
+    try {
+      const clubSnap = await getDocs(collection(db, "clubs"));
+
+      setClubs(
+        clubSnap.docs.map(d => ({
+          id: d.id,
+          ...d.data(),
+        }))
+      );
+    } catch (err) {
+      console.error("Error fetching clubs:", err);
+    }
+  };
+
+  fetchData();
+}, []);
 
   /* ---------------- LOAD PROFILE ---------------- */
 
@@ -156,15 +174,7 @@ const StudentHome = () => {
 
   /* ---------------- REGISTER EVENT ---------------- */
 
-  const handleRegister = (id: string) => {
-    setEvents((prev) =>
-      prev.map((e) =>
-        e.id === id ? { ...e, registered: !e.registered } : e
-      )
-    );
-
-    toast.success("Registration updated");
-  };
+  
 
   /* ---------------- FILTER EVENTS ---------------- */
 
@@ -262,7 +272,7 @@ const StudentHome = () => {
             <button
               key={club.name}
               onClick={() =>
-                navigate(`/student/club/${encodeURIComponent(club.name)}`)
+             navigate(`/student/club/${club.id}`)
               }
               className="w-full flex items-center gap-3 px-4 py-2 text-sm text-primary-foreground/60"
             >
@@ -436,11 +446,11 @@ const StudentHome = () => {
                     size="sm"
                     onClick={(e) => {
                       e.stopPropagation();
-                      handleRegister(event.id);
-                    }}
-                  >
-                    {event.registered ? "Unregister" : "Register"}
-                  </Button>
+                      alert(`Participants: ${event.registeredCount || 0}`);
+                     }}
+                    >
+                        Participants Registered
+                    </Button>
 
                 </motion.div>
               ))}
