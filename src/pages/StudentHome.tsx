@@ -71,7 +71,7 @@ const StudentHome = () => {
     class: "S6 CSE",
     photoURL: "",
   });
-
+const [clubs, setClubs] = useState<any[]>([]);
   /* ---------------- LOAD EVENTS ---------------- */
 
   const loadEvents = async () => {
@@ -104,9 +104,27 @@ const StudentHome = () => {
     setEvents(eventList);
   };
 
-  useEffect(() => {
-    loadEvents();
-  }, []);
+ useEffect(() => {
+  const fetchData = async () => {
+    await loadEvents(); // existing
+
+    // 🔥 ADD THIS
+    try {
+      const clubSnap = await getDocs(collection(db, "clubs"));
+
+      setClubs(
+        clubSnap.docs.map(d => ({
+          id: d.id,
+          ...d.data(),
+        }))
+      );
+    } catch (err) {
+      console.error("Error fetching clubs:", err);
+    }
+  };
+
+  fetchData();
+}, []);
 
   /* ---------------- LOAD PROFILE ---------------- */
 
@@ -259,7 +277,7 @@ const StudentHome = () => {
             <button
               key={club.name}
               onClick={() =>
-                navigate(`/student/club/${encodeURIComponent(club.name)}`)
+             navigate(`/student/club/${club.id}`)
               }
               className="w-full flex items-center gap-3 px-4 py-2 text-sm text-primary-foreground/60"
             >
