@@ -11,7 +11,7 @@ import {
 } from "firebase/firestore";
 import { query, where, getDocs } from "firebase/firestore";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, CheckCircle2, QrCode, Upload, Zap } from "lucide-react";
+import { ArrowLeft, CheckCircle2, QrCode, Upload, Zap, Calendar, Clock, MapPin } from "lucide-react";
 const EventDetails = () => {
 const { eventId } = useParams();
 const navigate = useNavigate();
@@ -26,12 +26,17 @@ interface EventDetailItem {
   upiId?: string;
   paymentInstructions?: string;
   registeredCount?: number;
+  date?: string;
+  time?: string;
+  location?: string;
+  venue?: string;
   [key: string]: unknown;
 }
 
 const [event, setEvent] = useState<EventDetailItem | null>(null);
 const [showRegister, setShowRegister] = useState(false);
 const [paymentFile, setPaymentFile] = useState<File | null>(null);
+const [showImageModal, setShowImageModal] = useState(false);
 
   useEffect(() => {
     const fetchEvent = async () => {
@@ -163,8 +168,11 @@ await addDoc(collection(db, "registrations"), {
 >
 
   {/* 🖼 POSTER */}
-  <div className="relative w-full h-80 md:h-[32rem] rounded-[2.5rem] overflow-hidden shadow-2xl mb-12 border-4 border-white group">
-    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent z-10" />
+  <div 
+    className="relative w-full h-80 md:h-[32rem] rounded-[2.5rem] overflow-hidden shadow-2xl mb-12 border-4 border-white group cursor-pointer"
+    onClick={() => setShowImageModal(true)}
+  >
+    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent z-10 pointer-events-none" />
     <img
       src={event.posterURL}
       alt={event.title}
@@ -175,9 +183,25 @@ await addDoc(collection(db, "registrations"), {
   <div className="px-4 md:px-12 pb-12">
     
     {/* 📝 DETAILS */}
-    <h1 className="text-4xl sm:text-5xl md:text-7xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 mb-8 drop-shadow-sm leading-tight text-center sm:text-left">
+    <h1 className="text-4xl sm:text-5xl md:text-7xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 mb-6 drop-shadow-sm leading-tight text-center sm:text-left">
       {event.title}
     </h1>
+
+    {/* 📅 META INFO */}
+    <div className="flex flex-wrap items-center gap-4 mb-8 text-slate-700 font-bold justify-center sm:justify-start">
+      <div className="flex items-center gap-2 bg-blue-50/80 backdrop-blur-sm px-5 py-2.5 rounded-2xl border border-blue-200 shadow-sm">
+        <Calendar className="w-5 h-5 text-blue-500" />
+        {event.date || "TBD"}
+      </div>
+      <div className="flex items-center gap-2 bg-purple-50/80 backdrop-blur-sm px-5 py-2.5 rounded-2xl border border-purple-200 shadow-sm">
+        <Clock className="w-5 h-5 text-purple-500" />
+        {event.time || "TBD"}
+      </div>
+      <div className="flex items-center gap-2 bg-pink-50/80 backdrop-blur-sm px-5 py-2.5 rounded-2xl border border-pink-200 shadow-sm">
+        <MapPin className="w-5 h-5 text-pink-500" />
+        {event.location || event.venue || "Campus"}
+      </div>
+    </div>
 
     <p className="text-lg md:text-xl text-slate-600 leading-relaxed font-medium mb-16 max-w-4xl">
       {event.description}
@@ -279,8 +303,34 @@ await addDoc(collection(db, "registrations"), {
     )}
   </div>
 </motion.div>
-</div>
-</div>
+      {/* FULLSCREEN IMAGE MODAL */}
+      <AnimatePresence>
+        {showImageModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setShowImageModal(false)}
+            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/95 p-4 backdrop-blur-md cursor-zoom-out"
+          >
+            <motion.img
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 20 }}
+              src={event.posterURL}
+              alt="Event Poster Fullscreen"
+              className="max-w-full max-h-[90vh] object-contain rounded-2xl shadow-2xl border-2 border-white/10"
+              onClick={(e) => e.stopPropagation()} // Prevent clicking image from closing it immediately
+            />
+            {/* Close instruction */}
+            <p className="absolute bottom-6 text-white/50 text-sm font-semibold tracking-widest pointer-events-none">
+              CLICK ANYWHERE TO CLOSE
+            </p>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+    </div>
   );
 };
 export default EventDetails;

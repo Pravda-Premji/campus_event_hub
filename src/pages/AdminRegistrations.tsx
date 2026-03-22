@@ -13,6 +13,7 @@ import {
 } from "firebase/firestore";
 import { useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 
 interface RegItem {
   id: string;
@@ -43,9 +44,11 @@ const AdminRegistrations = () => {
   const handleUploadCert = async (student: RegItem) => {
     const file = certFiles[student.id];
     if (!file) {
-      alert("Please select a file first");
+      toast.error("Please select a file first");
       return;
     }
+
+    const toastId = toast.loading("Uploading certificate...");
 
     setUploadingId(student.id);
     try {
@@ -53,7 +56,8 @@ const AdminRegistrations = () => {
 
       if (!finalUserId) {
         if (!student.email) {
-          alert("Error: Legacy registration missing both userId AND email! Cannot map certificate.");
+          toast.dismiss(toastId);
+          toast.error("Error: Legacy registration missing both userId AND email! Cannot map certificate.");
           setUploadingId(null);
           return;
         }
@@ -68,7 +72,8 @@ const AdminRegistrations = () => {
           });
           
         } else {
-          alert("Error: Legacy registration could not find matching User ID via email.");
+          toast.dismiss(toastId);
+          toast.error("Error: Legacy registration could not find matching User ID via email.");
           setUploadingId(null);
           return;
         }
@@ -85,13 +90,11 @@ const AdminRegistrations = () => {
       const data = await res.json();
       
       if (!data.secure_url) {
-        alert("Upload error: Cloudinary URL not found");
+        toast.dismiss(toastId);
+        toast.error("Upload error: Cloudinary URL not found");
         setUploadingId(null);
         return;
       }
-
-      console.log("Saving certificate for:", finalUserId);
-      console.log("Cloudinary URL:", data.secure_url);
 
       await addDoc(collection(db, "certificates"), {
         userId: finalUserId,
@@ -102,11 +105,13 @@ const AdminRegistrations = () => {
       
       setUploadedCerts(prev => [...prev, { userId: finalUserId, eventId, certificateURL: data.secure_url }]);
       
-      alert("Certificate uploaded successfully!");
+      toast.dismiss(toastId);
+      toast.success("Certificate uploaded successfully!");
       setCertFiles(prev => ({ ...prev, [student.id]: null }));
     } catch (err) {
       console.error(err);
-      alert("Failed to upload certificate");
+      toast.dismiss(toastId);
+      toast.error("Failed to upload certificate");
     } finally {
       setUploadingId(null);
     }
@@ -129,16 +134,18 @@ const AdminRegistrations = () => {
       await deleteDoc(doc(db, "certificates", cert.id));
       
       setUploadedCerts(prev => prev.filter(c => c.id !== cert.id));
-      alert("Certificate deleted successfully");
+      toast.success("Certificate deleted successfully");
     } catch (err) {
       console.error(err);
-      alert("Failed to delete certificate");
+      toast.error("Failed to delete certificate");
     }
   };
 
   const handleReplaceCert = async (cert: CertItem, file: File) => {
     if (!cert.id) return;
     setUploadingId(cert.userId || null);
+    const toastId = toast.loading("Replacing certificate...");
+    
     try {
       const formData = new FormData();
       formData.append("file", file);
@@ -151,7 +158,8 @@ const AdminRegistrations = () => {
       const data = await res.json();
       
       if (!data.secure_url) {
-        alert("Upload error: Cloudinary URL not found");
+        toast.dismiss(toastId);
+        toast.error("Upload error: Cloudinary URL not found");
         return;
       }
 
@@ -160,10 +168,13 @@ const AdminRegistrations = () => {
       });
       
       setUploadedCerts(prev => prev.map(c => c.id === cert.id ? { ...c, certificateURL: data.secure_url } : c));
-      alert("Certificate replaced successfully!");
+      
+      toast.dismiss(toastId);
+      toast.success("Certificate replaced successfully!");
     } catch (err) {
       console.error(err);
-      alert("Failed to replace certificate");
+      toast.dismiss(toastId);
+      toast.error("Failed to replace certificate");
     } finally {
       setUploadingId(null);
     }
@@ -239,7 +250,10 @@ const AdminRegistrations = () => {
                          accept="application/pdf,image/*"
                          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                          onChange={(e) => {
-                           if (e.target.files?.[0]) handleReplaceCert(studentCert, e.target.files[0]);
+                           if (e.target.files?.[0]) {
+                             handleReplaceCert(studentCert, e.target.files[0]);
+                             e.target.value = ''; // Reset input to allow selecting the same file path again natively
+                           }
                          }}
                        />
                        <Button size="sm" variant="secondary" className="pointer-events-none" disabled={uploadingId === studentCert.userId}>

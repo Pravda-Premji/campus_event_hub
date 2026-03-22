@@ -91,6 +91,7 @@ const [flippedId, setFlippedId] = useState<string | null>(null);
     useState<"events" | "today" | "profile" | "certificates">("events");
 
   const [certificates, setCertificates] = useState<CertificateItem[]>([]);
+  const [myRegistrations, setMyRegistrations] = useState<{eventId?: string}[]>([]);
   const [previewCert, setPreviewCert] = useState<string | null>(null);
 
   const [isEditing, setIsEditing] = useState(false);
@@ -186,10 +187,31 @@ const [flippedId, setFlippedId] = useState<string | null>(null);
       } catch (err) {
         console.error("Error fetching certificates", err);
       }
+
+      // Fetch registrations for banner matching
+      try {
+        const regQuery = query(
+          collection(db, "registrations"),
+          where("userId", "==", user.uid)
+        );
+        const regSnap = await getDocs(regQuery);
+        setMyRegistrations(regSnap.docs.map(doc => doc.data() as {eventId?: string}));
+      } catch (err) {
+        console.error("Error fetching registrations", err);
+      }
     };
 
     loadProfile();
   }, []);
+
+  // Compute Events starting within 24 hours that user registered for
+  const tomorrowEvents = events.filter(e => {
+    if (!e.date || !e.time) return false;
+    const evtDate = new Date(`${e.date} ${e.time}`);
+    const timeDiffMs = evtDate.getTime() - Date.now();
+    const hoursDiff = timeDiffMs / (1000 * 60 * 60);
+    return hoursDiff > 0 && hoursDiff <= 24 && myRegistrations.some(r => r.eventId === e.id);
+  });
 
   /* ---------------- SAVE PROFILE ---------------- */
 
@@ -415,6 +437,23 @@ const [flippedId, setFlippedId] = useState<string | null>(null);
             </div>
           </div>
         </header>
+
+        {tomorrowEvents.length > 0 && (
+          <motion.div 
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mx-4 sm:mx-8 mt-6 bg-gradient-to-r from-amber-500 to-orange-500 text-white px-6 py-4 rounded-2xl shadow-lg border-2 border-orange-300 flex items-center justify-between"
+          >
+            <div>
+              <h4 className="font-extrabold text-lg flex items-center gap-2 drop-shadow-sm">
+                ⚠️ Upcoming Event Tomorrow
+              </h4>
+              <p className="text-sm font-semibold opacity-95">
+                Don't forget! Your registered event <strong className="px-1 bg-white/20 rounded">{tomorrowEvents[0].title}</strong> is starting soon.
+              </p>
+            </div>
+          </motion.div>
+        )}
 
         {/* PROFILE */}
 

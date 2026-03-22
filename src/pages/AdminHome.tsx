@@ -210,6 +210,9 @@ const [galleryImages, setGalleryImages] = useState<string[]>([]);
     setEventType(event.eventType || "free");
     setRequireScreenshot(event.requireScreenshot || false);
     setShowForm(true);
+    
+    // Smooth scroll to the top so the form is instantly visible to the user
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 const handleSaveClubProfile = async () => {
   try {
@@ -482,9 +485,65 @@ const handleDeleteMember = async (id: string) => {
   ))}
 </div>
         {/* CREATE BUTTON */}
-        <Button onClick={() => setShowForm(true)}>
-          <Plus /> New Event
-        </Button>
+        {!showForm && (
+          <Button onClick={() => { resetForm(); setShowForm(true); }} className="mt-8">
+            <Plus className="mr-2 w-4 h-4" /> New Event
+          </Button>
+        )}
+
+        {/* FORM (Moved to top so it's visible immediately) */}
+        {showForm && (
+          <div className="bg-card p-6 rounded-lg shadow-md mt-6 border border-border">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-xl font-bold">{editingId ? "Edit Event" : "Create New Event"}</h3>
+              <Button variant="ghost" onClick={resetForm}>Cancel</Button>
+            </div>
+            <form onSubmit={handleSubmitEvent} className="space-y-4">
+              <Input placeholder="Event Title" value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} />
+              <Textarea placeholder="Description" value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} />
+              
+              <div className="grid grid-cols-2 gap-4">
+                <Input type="date" value={form.date} onChange={e => setForm({ ...form, date: e.target.value })} />
+                <Input type="time" value={form.time} onChange={e => setForm({ ...form, time: e.target.value })} />
+              </div>
+              
+              <Input placeholder="Venue / Location" value={form.location} onChange={e => setForm({ ...form, location: e.target.value })} />
+
+              <div>
+                <label className="text-sm font-medium mb-1 block">Event Poster (Optional)</label>
+                <input type="file" className="block w-full text-sm" onChange={e => setPoster(e.target.files?.[0] || null)} />
+              </div>
+
+              {/* EVENT TYPE */}
+              <div className="flex gap-6 items-center border-t pt-4">
+                <p className="text-sm font-semibold">Event Type:</p>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input type="radio" checked={eventType === "free"} onChange={() => setEventType("free")} />
+                  Free
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input type="radio" checked={eventType === "paid"} onChange={() => setEventType("paid")} />
+                  Paid
+                </label>
+              </div>
+
+              {eventType === "paid" && (
+                <div className="bg-slate-50 p-3 rounded border">
+                  <label className="flex items-center gap-2 text-sm font-medium cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={requireScreenshot}
+                      onChange={() => setRequireScreenshot(!requireScreenshot)}
+                    />
+                    Require Payment Screenshot from Students
+                  </label>
+                </div>
+              )}
+
+              <Button type="submit" className="w-full">{editingId ? "Update Event" : "Create Event"}</Button>
+            </form>
+          </div>
+        )}
 
         {/* EVENTS */}
         <div className="mt-6 space-y-4">
@@ -541,45 +600,7 @@ const handleDeleteMember = async (id: string) => {
           ))}
         </div>
 
-        {/* FORM */}
-        {showForm && (
-          <form onSubmit={handleSubmitEvent} className="mt-6 space-y-3">
-            <Input placeholder="Title" onChange={e => setForm({ ...form, title: e.target.value })} />
-            <Textarea placeholder="Description" onChange={e => setForm({ ...form, description: e.target.value })} />
-            <Input type="date" onChange={e => setForm({ ...form, date: e.target.value })} />
-            <Input type="time" onChange={e => setForm({ ...form, time: e.target.value })} />
-            <Input placeholder="Location" onChange={e => setForm({ ...form, location: e.target.value })} />
-
-            <input type="file" onChange={e => setPoster(e.target.files?.[0] || null)} />
-
-            {/* EVENT TYPE */}
-            <div>
-              <label>
-                <input type="radio" checked={eventType === "free"} onChange={() => setEventType("free")} />
-                Free
-              </label>
-              <label>
-                <input type="radio" checked={eventType === "paid"} onChange={() => setEventType("paid")} />
-                Paid
-              </label>
-            </div>
-
-            {eventType === "paid" && (
-              <div>
-                <label>
-                  Require Screenshot
-                  <input
-                    type="checkbox"
-                    checked={requireScreenshot}
-                    onChange={() => setRequireScreenshot(!requireScreenshot)}
-                  />
-                </label>
-              </div>
-            )}
-
-            <Button type="submit">Save</Button>
-          </form>
-        )}
+        {/* (FORM WAS HERE, MOVED TO TOP) */}
       </div>
     </div>
   );
