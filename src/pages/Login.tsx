@@ -145,16 +145,20 @@ const Login = () => {
       toast.error("Unrecognized role. Contact admin.");
 
     } catch (err: unknown) {
-  console.error("AUTH ERROR:", err);
+      console.error("AUTH ERROR:", err);
+      const error = err as { code?: string; message?: string };
+      const code = error.code ?? "";
 
-  if (err instanceof Error) {
-    console.log(err.message);
-  }
-
-  const error = err as { code?: string; message?: string };
-
-  const code = error.code ?? "";
-}finally {
+      if (code === "auth/wrong-password" || code === "auth/invalid-credential") {
+        toast.error("Incorrect password or email. Please try again.");
+      } else if (code === "auth/user-not-found") {
+        toast.error("No account found with this email.");
+      } else if (code === "auth/too-many-requests") {
+        toast.error("Too many failed attempts. Please try again later.");
+      } else {
+        toast.error("Authentication failed. Please try again.");
+      }
+    } finally {
       setLoading(false);
     }
   };
