@@ -18,9 +18,9 @@ const ClubPage = () => {
   const navigate = useNavigate();
   console.log("clubId:", clubId);
 
-  const [club, setClub] = useState<any>(null);
-  const [events, setEvents] = useState<any[]>([]);
-  const [execom, setExecom] = useState<any[]>([]);
+  const [club, setClub] = useState<{ id: string; name?: string; intro?: string; gallery?: string[]; flagshipEvent?: string; [key: string]: unknown } | null>(null);
+  const [events, setEvents] = useState<{ id: string; title?: string; date?: string; time?: string; posterURL?: string; [key: string]: unknown }[]>([]);
+  const [execom, setExecom] = useState<{ id: string; name?: string; role?: string; imageURL?: string; [key: string]: unknown }[]>([]);
 const [selectedImage, setSelectedImage] = useState<string | null>(null);
 useEffect(() => {
   if (!clubId) return;
@@ -35,7 +35,7 @@ useEffect(() => {
 
       if (clubSnap.exists()) {
         console.log("Club found:", clubSnap.data());
-        setClub(clubSnap.data());
+        setClub({ id: clubSnap.id, ...clubSnap.data() });
       } else {
         console.log("No club found");
       }

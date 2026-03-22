@@ -144,33 +144,17 @@ const Login = () => {
 
       toast.error("Unrecognized role. Contact admin.");
 
-    } catch (err: any) {
-      console.error("AUTH ERROR:", err?.code, err?.message);
+    } catch (err: unknown) {
+  console.error("AUTH ERROR:", err);
 
-      // Firebase v9+ consolidates many errors under auth/invalid-credential
-      const code: string = err?.code ?? "";
+  if (err instanceof Error) {
+    console.log(err.message);
+  }
 
-      if (
-        code === "auth/user-not-found" ||
-        code === "auth/wrong-password" ||
-        code === "auth/invalid-credential" ||
-        code === "auth/invalid-email"
-      ) {
-        toast.error("Invalid email or password. Please try again.");
-      } else if (code === "auth/too-many-requests") {
-        toast.error("Too many failed attempts. Please try again later or reset your password.");
-      } else if (code === "auth/network-request-failed") {
-        toast.error("Network error. Check your internet connection.");
-      } else if (code === "auth/email-already-in-use") {
-        toast.error("This email is already registered. Try signing in instead.");
-      } else if (code === "auth/weak-password") {
-        toast.error("Password must be at least 6 characters.");
-      } else {
-        toast.error("Something went wrong. Please try again.");
-        // Log for debugging — remove in production
-        console.error("Unhandled error:", err);
-      }
-    } finally {
+  const error = err as { code?: string; message?: string };
+
+  const code = error.code ?? "";
+}finally {
       setLoading(false);
     }
   };
@@ -189,14 +173,17 @@ const Login = () => {
       toast.success("Password reset email sent. Check your inbox.");
       setShowForgot(false);
       setForgotEmail("");
-    } catch (err: any) {
-      const code: string = err?.code ?? "";
-      if (code === "auth/user-not-found" || code === "auth/invalid-email") {
-        toast.error("No account found with that email.");
-      } else {
-        toast.error("Failed to send reset email. Please try again.");
-      }
-    }
+    } catch (err: unknown) {
+  const error = err as { code?: string };
+
+  const code: string = error.code ?? "";
+
+  if (code === "auth/user-not-found" || code === "auth/invalid-email") {
+    toast.error("No account found with that email.");
+  } else {
+    toast.error("Failed to send reset email. Please try again.");
+  }
+}
   };
 
   return (

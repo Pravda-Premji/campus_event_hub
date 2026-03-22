@@ -40,14 +40,14 @@ const events = [
 
 const Landing = () => {
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-white">
       <Navbar />
 
       {/* Hero Section */}
       <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
         <div className="absolute inset-0">
           <img src={campusHero} alt="Campus" className="w-full h-full object-cover" />
-          <div className="absolute inset-0 bg-primary/70 backdrop-blur-[2px]" />
+          <div className="absolute inset-0 bg-gradient-to-b from-blue-500/40 via-blue-500/30 to-blue-500/50 backdrop-blur-[2px]" />
         </div>
 
         <div className="relative z-10 container mx-auto px-6 text-center">
@@ -105,7 +105,7 @@ const Landing = () => {
         </div>
       </section>
      {/* 3D Events Showcase */}
-<section className="py-24 bg-background">
+<section className="py-24 bg-white">
   <div className="container mx-auto px-6 text-center">
 
     <h2 className="text-4xl font-bold mb-16">
@@ -160,7 +160,7 @@ const Landing = () => {
   </div>
 </section>
       {/* Events Section */}
-      <section id="events" className="py-24 bg-background">
+      <section id="events" className="py-24 bg-white">
         <div className="container mx-auto px-6">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -170,7 +170,7 @@ const Landing = () => {
             className="text-center mb-16"
           >
             <span className="text-secondary font-semibold text-sm uppercase tracking-wider">Our Pride</span>
-            <h2 className="font-display text-4xl md:text-5xl font-bold text-foreground mt-3 mb-4">
+            <h2 className="font-display text-4xl md:text-5xl font-bold text-gray-900 mt-3 mb-4">
               Flagship Events
             </h2>
             <p className="text-muted-foreground max-w-xl mx-auto">

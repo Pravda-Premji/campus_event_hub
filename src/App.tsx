@@ -7,6 +7,7 @@ import EventDetails from "./pages/EventDetails";
 import ClubPage from "./pages/ClubPage";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import { Toaster } from "sonner";
+import AdminRegistrations from "./pages/AdminRegistrations";
 
 function App() {
   return (
@@ -45,9 +46,25 @@ function App() {
         />
 
         {/* 🔐 ADMIN */}
-        <Route path="/admin" element={<AdminHome />} />
-      </Routes>
+        <Route
+  path="/admin"
+  element={
+    <ProtectedRoute allowed={["admin", "club_admin"]}>
+      <AdminHome />
+    </ProtectedRoute>
+  }
+/>
 
+<Route
+  path="/admin/registrations/:eventId"
+  element={
+    <ProtectedRoute allowed={["admin", "club_admin"]}>
+      <AdminRegistrations />
+    </ProtectedRoute>
+  }
+/>
+      </Routes>
+      
       {/* Toasts */}
       <Toaster position="top-center" richColors duration={5000} />
     </>

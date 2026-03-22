@@ -43,7 +43,7 @@ const AdminHome = () => {
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
 
-  const [registrations, setRegistrations] = useState<any[]>([]);
+  const [registrations, setRegistrations] = useState<{ id: string; studentName?: string; branch?: string; year?: string; phone?: string; screenshotURL?: string; [key: string]: unknown }[]>([]);
   const [selectedEventId, setSelectedEventId] = useState("");
 
   const [clubId, setClubId] = useState("");
@@ -53,7 +53,7 @@ const AdminHome = () => {
   flagshipEvent: "",
 });
 
-const [execom, setExecom] = useState<any[]>([]);
+const [execom, setExecom] = useState<{ id: string; name?: string; role?: string; imageURL?: string; clubId?: string; [key: string]: unknown }[]>([]);
 const [member, setMember] = useState({ name: "", role: "" });
 const [memberImage, setMemberImage] = useState<File | null>(null);
 const [galleryFiles, setGalleryFiles] = useState<File[]>([]);
@@ -195,6 +195,20 @@ const [galleryFiles, setGalleryFiles] = useState<File[]>([]);
     await deleteDoc(doc(db, "events", id));
     setEvents(prev => prev.filter(e => e.id !== id));
   };
+
+  const handleEditEvent = (event: EventItem) => {
+    setEditingId(event.id);
+    setForm({
+      title: event.title || "",
+      description: event.description || "",
+      date: event.date || "",
+      time: event.time || "",
+      location: event.location || ""
+    });
+    setEventType(event.eventType || "free");
+    setRequireScreenshot(event.requireScreenshot || false);
+    setShowForm(true);
+  };
 const handleSaveClubProfile = async () => {
   try {
     const user = auth.currentUser;
@@ -275,7 +289,7 @@ const handleUploadGallery = async () => {
   try {
     const urls: string[] = [];
 
-    for (let file of galleryFiles) {
+    for (const file of galleryFiles) {
       const formData = new FormData();
       formData.append("file", file);
       formData.append("upload_preset", "campus_upload");
@@ -459,15 +473,19 @@ const handleDeleteMember = async (id: string) => {
                 <Button onClick={() => handleDeleteEvent(event.id)}>
                   <Trash2 />
                 </Button>
-
-                <Button
-                  onClick={() => {
-                    setSelectedEventId(event.id);
-                    loadRegistrations(event.id);
-                  }}
-                >
-                  View Registrations
+                
+                <Button onClick={() => handleEditEvent(event)} variant="outline">
+                  <Edit3 className="w-4 h-4 mr-1" /> Edit
                 </Button>
+
+                <button
+                   onClick={() =>
+                    navigate(`/admin/registrations/${event.id}`)
+                }
+                className="bg-blue-900 text-white px-4 py-2 rounded"
+            >
+               View Registrations
+            </button>
               </div>
 
               {/* REGISTRATIONS */}
