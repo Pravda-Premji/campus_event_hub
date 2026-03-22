@@ -187,7 +187,7 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen bg-hero flex items-center justify-center p-6 relative">
+    <div className="min-h-screen bg-[#0f172a] bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center p-6 relative">
 
       <button
         onClick={() => navigate("/")}

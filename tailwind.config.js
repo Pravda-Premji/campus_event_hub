@@ -11,7 +11,7 @@ export default {
         foreground: "#0f172a",
         border: "#e5e7eb",
         primary: "#2563eb",
-        secondary: "#7c3aed"
+        secondary: "#f97316"
       }
     }
   },

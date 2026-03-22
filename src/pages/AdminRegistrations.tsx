@@ -8,6 +8,7 @@ import {
   addDoc,
   serverTimestamp,
   updateDoc,
+  deleteDoc,
   doc
 } from "firebase/firestore";
 import { useParams } from "react-router-dom";
@@ -25,6 +26,7 @@ interface RegItem {
 }
 
 interface CertItem {
+  id?: string;
   userId?: string;
   eventId?: string;
   certificateURL?: string;
@@ -110,6 +112,63 @@ const AdminRegistrations = () => {
     }
   };
 
+  const handleDeleteCert = async (cert: CertItem) => {
+    if (!cert.id) return;
+    try {
+      if (cert.certificateURL) {
+        const parts = cert.certificateURL.split('/');
+        const publicId = parts[parts.length - 1].split('.')[0];
+        
+        await fetch(`https://api.cloudinary.com/v1_1/drnrkdzfa/delete_by_token`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ public_id: publicId })
+        }).catch(err => console.log(err));
+      }
+
+      await deleteDoc(doc(db, "certificates", cert.id));
+      
+      setUploadedCerts(prev => prev.filter(c => c.id !== cert.id));
+      alert("Certificate deleted successfully");
+    } catch (err) {
+      console.error(err);
+      alert("Failed to delete certificate");
+    }
+  };
+
+  const handleReplaceCert = async (cert: CertItem, file: File) => {
+    if (!cert.id) return;
+    setUploadingId(cert.userId || null);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("upload_preset", "campus_upload"); 
+      
+      const res = await fetch("https://api.cloudinary.com/v1_1/drnrkdzfa/image/upload", {
+        method: "POST",
+        body: formData,
+      });
+      const data = await res.json();
+      
+      if (!data.secure_url) {
+        alert("Upload error: Cloudinary URL not found");
+        return;
+      }
+
+      await updateDoc(doc(db, "certificates", cert.id), {
+        certificateURL: data.secure_url
+      });
+      
+      setUploadedCerts(prev => prev.map(c => c.id === cert.id ? { ...c, certificateURL: data.secure_url } : c));
+      alert("Certificate replaced successfully!");
+    } catch (err) {
+      console.error(err);
+      alert("Failed to replace certificate");
+    } finally {
+      setUploadingId(null);
+    }
+  };
+
   useEffect(() => {
     const fetchData = async () => {
       if (!eventId) return;
@@ -132,7 +191,7 @@ const AdminRegistrations = () => {
         where("eventId", "==", eventId)
       );
       const certSnap = await getDocs(certQ);
-      setUploadedCerts(certSnap.docs.map(doc => doc.data() as CertItem));
+      setUploadedCerts(certSnap.docs.map(doc => ({ id: doc.id, ...doc.data() as CertItem })));
     };
 
     fetchData();
@@ -145,7 +204,8 @@ const AdminRegistrations = () => {
       </h2>
 
       {registrations.map(student => {
-        const hasCert = uploadedCerts.some(c => c.userId === student.userId);
+        const studentCert = uploadedCerts.find(c => c.userId === student.userId);
+        const hasCert = !!studentCert;
 
         return (
           <div
@@ -159,10 +219,34 @@ const AdminRegistrations = () => {
             
             <div className="mt-3 pt-3 border-t">
               <p className="text-sm font-semibold mb-2">Upload Certificate</p>
-              {hasCert ? (
-                <div className="flex items-center gap-2 text-green-600 font-semibold bg-green-50 px-3 py-2 rounded-lg border border-green-200">
-                  <span>✅</span>
-                  Certificate uploaded (Already uploaded)
+              {hasCert && studentCert ? (
+                <div className="flex flex-col gap-3">
+                  <div className="flex items-center gap-2 text-green-600 font-semibold bg-green-50 px-3 py-2 rounded-lg border border-green-200">
+                    <span>✅</span>
+                    Certificate uploaded
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button size="sm" variant="outline" onClick={() => window.open(studentCert.certificateURL, '_blank')}>
+                      View
+                    </Button>
+                    <Button size="sm" variant="destructive" onClick={() => handleDeleteCert(studentCert)}>
+                      Delete
+                    </Button>
+                    
+                    <div className="relative inline-flex">
+                       <input 
+                         type="file"
+                         accept="application/pdf,image/*"
+                         className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                         onChange={(e) => {
+                           if (e.target.files?.[0]) handleReplaceCert(studentCert, e.target.files[0]);
+                         }}
+                       />
+                       <Button size="sm" variant="secondary" className="pointer-events-none" disabled={uploadingId === studentCert.userId}>
+                         {uploadingId === studentCert.userId ? "Replacing..." : "Replace"}
+                       </Button>
+                    </div>
+                  </div>
                 </div>
               ) : (
                 <div className="flex items-center gap-3">

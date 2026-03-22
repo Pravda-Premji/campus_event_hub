@@ -9,6 +9,8 @@ import yagnadhruvaImg from "@/assets/yagnadhruva.jpg";
 import prayaagImg from "@/assets/prayaag.jpg";
 import yavanikaImg from "@/assets/yavanika.jpeg";
 import myimage from "@/assets/myimage.jpeg";
+import slide2 from "@/assets/slide2.jpg";
+import slide3 from "@/assets/slide3.jpg";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { EffectCoverflow, Autoplay } from "swiper/modules";
 import "swiper/css";
@@ -47,7 +49,7 @@ const Landing = () => {
       <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
         <div className="absolute inset-0">
           <img src={campusHero} alt="Campus" className="w-full h-full object-cover" />
-          <div className="absolute inset-0 bg-gradient-to-b from-blue-500/40 via-blue-500/30 to-blue-500/50 backdrop-blur-[2px]" />
+          <div className="absolute inset-0 bg-gradient-to-b from-slate-900/70 via-slate-800/50 to-transparent  backdrop-blur-[2px]" />
         </div>
 
         <div className="relative z-10 container mx-auto px-6 text-center">
@@ -56,27 +58,27 @@ const Landing = () => {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, ease: "easeOut" }}
           >
-            <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-secondary/20 text-secondary text-sm font-medium mb-6 border border-secondary/30">
-              <Sparkles className="h-4 w-4" />
+        <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-orange-500/50 text-orange-400 text-sm font-medium mb-6 bg-orange-500/10 shadow-[0_0_15px_rgba(249,115,22,0.2)]">
+              <Sparkles className="h-4 w-4 drop-shadow-[0_0_8px_rgba(249,115,22,0.8)]" />
               LBS Institute Of Technology for Women
             </span>
-            <h1 className="font-display text-5xl md:text-7xl font-bold text-primary-foreground mb-6 leading-tight">
+           <h1 className="font-display text-5xl md:text-7xl font-bold text-white mb-6 leading-tight drop-shadow-lg">
               Where Campus
               <br />
-              <span className="text-gradient-amber">Comes Alive</span>
+              <span className="text-orange-400 drop-shadow-[0_0_20px_rgba(249,115,22,0.5)]">Comes Alive</span>
             </h1>
-            <p className="text-primary-foreground/70 text-lg md:text-xl max-w-2xl mx-auto mb-10 leading-relaxed">
+           <p className="text-white/80 text-lg md:text-xl max-w-2xl mx-auto mb-10 leading-relaxed">
               Your one-stop hub for all college events. Discover, register, and never miss a moment of the action. From technical fests to cultural extravaganzas — it all starts here.
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
               <Link to="/login">
-                <Button size="lg" className="bg-secondary text-secondary-foreground hover:bg-secondary/90 font-bold text-base px-8 shadow-amber animate-pulse-glow">
+                <Button size="lg" className="bg-orange-500 text-white hover:bg-orange-400 font-bold text-base px-8 shadow-[0_0_25px_rgba(249,115,22,0.6)] hover:shadow-[0_0_35px_rgba(249,115,22,0.8)] transition-all duration-300">
                   Get Started
                   <ArrowRight className="h-5 w-5 ml-2" />
                 </Button>
               </Link>
               <a href="#events">
-                <Button size="lg" className="bg-white text-primary hover:bg-gray-200 font-medium text-base px-8">
+                <Button size="lg" className="bg-white text-slate-900 hover:bg-gray-100 font-medium text-base px-8 shadow-lg">
                   Explore Events
                 </Button>
               </a>
@@ -95,10 +97,10 @@ const Landing = () => {
               { icon: Trophy, label: "Events", value: "100+" },
               { icon: Sparkles, label: "Clubs", value: "15+" },
             ].map(({ icon: Icon, label, value }) => (
-              <div key={label} className="text-center">
-                <Icon className="h-6 w-6 text-secondary mx-auto mb-2" />
-                <div className="font-display text-2xl font-bold text-primary-foreground">{value}</div>
-                <div className="text-primary-foreground/50 text-sm">{label}</div>
+              <div key={label} className="text-center group">
+                <Icon className="h-8 w-8 text-orange-400 drop-shadow-[0_0_15px_rgba(249,115,22,0.9)] mx-auto mb-3 transform group-hover:scale-110 transition-transform duration-300" />
+                <div className="font-display text-3xl font-bold text-white tracking-wide drop-shadow-md">{value}</div>
+               <div className="text-white/80 text-sm font-medium tracking-wider uppercase mt-1">{label}</div>
               </div>
             ))}
           </motion.div>
@@ -143,14 +145,16 @@ const Landing = () => {
 
       <SwiperSlide>
         <img
-          src="https://images.unsplash.com/photo-1492684223066-81342ee5ff30"
+          src={slide2}
+          alt="Campus Event"
           className="rounded-2xl h-[400px] w-full object-cover"
         />
       </SwiperSlide>
 
       <SwiperSlide>
         <img
-          src="https://images.unsplash.com/photo-1508606572321-901ea443707f"
+          src={slide3}
+          alt="Basketball Team"
           className="rounded-2xl h-[400px] w-full object-cover"
         />
       </SwiperSlide>

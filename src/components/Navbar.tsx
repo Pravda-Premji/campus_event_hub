@@ -11,16 +11,16 @@ const Navbar = () => {
     <nav
       className={`fixed top-0 left-0 right-0 z-50 transition-colors duration-300 ${
         isLanding
-          ? "bg-primary/80 backdrop-blur-md"
-          : "bg-primary shadow-md"
+          ? "bg-[#1e293b]/90 backdrop-blur-md border-b border-white/5"
+          : "bg-[#1e293b] shadow-md"
       }`}
     >
       <div className="container mx-auto flex items-center justify-between px-6 py-4">
         
         {/* Logo */}
-        <Link to="/" className="flex items-center gap-2">
-          <Calendar className="h-6 w-6 text-secondary" />
-          <span className="font-display text-xl font-bold text-primary-foreground">
+        <Link to="/" className="flex items-center gap-2 group">
+          <Calendar className="h-6 w-6 text-orange-400 drop-shadow-[0_0_10px_rgba(249,115,22,0.8)] group-hover:drop-shadow-[0_0_15px_rgba(249,115,22,1)] transition-all" />
+          <span className="font-display text-xl font-bold text-white drop-shadow-sm">
             Tharang
           </span>
         </Link>
@@ -29,7 +29,7 @@ const Navbar = () => {
         <div className="hidden md:flex items-center gap-6">
           <Link
             to="/login"
-            className="text-primary-foreground/80 hover:text-primary-foreground transition-colors text-sm font-medium"
+            className="text-white/80 hover:text-white transition-colors text-sm font-medium"
           >
             Login
           </Link>
@@ -37,7 +37,7 @@ const Navbar = () => {
 
         {/* Mobile Toggle */}
         <button
-          className="md:hidden text-primary-foreground"
+          className="md:hidden text-white"
           onClick={() => setMobileOpen(!mobileOpen)}
         >
           {mobileOpen ? (
@@ -50,10 +50,10 @@ const Navbar = () => {
 
       {/* Mobile Menu */}
       {mobileOpen && (
-        <div className="md:hidden bg-primary border-t border-border/20 px-6 py-4 space-y-3">
+        <div className="md:hidden bg-[#1e293b] border-t border-white/10 px-6 py-4 space-y-3">
           <Link
             to="/login"
-            className="block text-primary-foreground/80 hover:text-primary-foreground text-sm"
+            className="block text-white/80 hover:text-white text-sm"
             onClick={() => setMobileOpen(false)}
           >
             Login

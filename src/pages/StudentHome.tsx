@@ -66,6 +66,12 @@ const clubs = [
   { name: "Navarasa", emoji: "💃" },
 ];
 
+const getDownloadUrl = (url?: string) => {
+  if (!url) return "";
+  if (url.includes("/upload/fl_attachment/")) return url;
+  return url.replace("/upload/", "/upload/fl_attachment/");
+};
+
 const StudentHome = () => {
   const navigate = useNavigate();
 
@@ -216,13 +222,42 @@ const [flippedId, setFlippedId] = useState<string | null>(null);
 );
   /* ---------------- IMAGE UPLOAD ---------------- */
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const imageUrl = URL.createObjectURL(file);
-    setProfileData({ ...profileData, photoURL: imageUrl });
-    setPhotoURL(imageUrl);
+    const toastId = toast.loading("Uploading image...");
+
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("upload_preset", "campus_upload");
+
+      const res = await fetch(
+        "https://api.cloudinary.com/v1_1/drnrkdzfa/image/upload",
+        {
+          method: "POST",
+          body: formData,
+        }
+      );
+
+      const data = await res.json();
+      
+      const user = auth.currentUser;
+      if (user && data.secure_url) {
+        await updateDoc(doc(db, "users", user.uid), {
+          photoURL: data.secure_url
+        });
+        setPhotoURL(data.secure_url);
+        setProfileData(prev => ({ ...prev, photoURL: data.secure_url }));
+        toast.success("Profile image updated!", { id: toastId });
+      } else {
+        throw new Error("Upload failed");
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to upload image", { id: toastId });
+    }
   };
 
   /* ---------------- UI ---------------- */
@@ -356,17 +391,29 @@ const [flippedId, setFlippedId] = useState<string | null>(null);
             {activeTab === "certificates" && "My Certificates"}
           </h1>
 
-          {activeTab === "events" && (
-            <div className="relative hidden sm:block group">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 group-focus-within:text-blue-500 transition-colors" />
-              <Input
-                placeholder="Search events..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-11 w-72 rounded-full bg-white/60 backdrop-blur-md border border-white/40 focus-visible:bg-white focus-visible:ring-2 focus-visible:ring-blue-500/50 shadow-[0_4px_15px_rgba(0,0,0,0.03)] transition-all duration-300 h-11 font-medium text-slate-700 placeholder:text-slate-400"
-              />
+          <div className="flex items-center gap-4">
+            {activeTab === "events" && (
+              <div className="relative hidden sm:block group">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 group-focus-within:text-blue-500 transition-colors" />
+                <Input
+                  placeholder="Search events..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-11 w-72 rounded-full bg-white/60 backdrop-blur-md border border-white/40 focus-visible:bg-white focus-visible:ring-2 focus-visible:ring-blue-500/50 shadow-[0_4px_15px_rgba(0,0,0,0.03)] transition-all duration-300 h-11 font-medium text-slate-700 placeholder:text-slate-400"
+                />
+              </div>
+            )}
+            
+            <div className="flex items-center justify-center shrink-0">
+              {photoURL ? (
+                <img src={photoURL} className="w-10 h-10 rounded-full object-cover border border-slate-200" alt="Profile" />
+              ) : (
+                <div className="w-10 h-10 rounded-full bg-blue-500 text-white flex items-center justify-center font-bold">
+                  {name ? name.charAt(0).toUpperCase() : "U"}
+                </div>
+              )}
             </div>
-          )}
+          </div>
         </header>
 
         {/* PROFILE */}
@@ -396,9 +443,9 @@ const [flippedId, setFlippedId] = useState<string | null>(null);
                         className="h-full w-full object-cover"
                       />
                     ) : (
-                      <span className="text-2xl font-bold tracking-widest text-slate-600">
-                        {name ? name.substring(0, 2).toUpperCase() : "NA"}
-                      </span>
+                      <div className="w-full h-full bg-blue-500 text-white flex items-center justify-center font-bold text-2xl tracking-widest">
+                        {name ? name.charAt(0).toUpperCase() : "NA"}
+                      </div>
                     )}
                   </div>
                   {isEditing && (
@@ -638,9 +685,7 @@ const [flippedId, setFlippedId] = useState<string | null>(null);
                         View
                       </button>
                       <a 
-                        href={cert.certificateURL} 
-                        target="_blank"
-                        rel="noreferrer"
+                        href={getDownloadUrl(cert.certificateURL)} 
                         download
                         className="flex-1 flex justify-center items-center gap-2 bg-gradient-to-r from-emerald-500 to-teal-500 text-white py-3.5 rounded-full font-bold shadow-lg hover:shadow-[0_8px_25px_rgba(16,185,129,0.5)] hover:scale-105 transition-all duration-300"
                       >
@@ -690,9 +735,7 @@ const [flippedId, setFlippedId] = useState<string | null>(null);
               <div className="mt-4 flex justify-between items-center">
                 <p className="text-slate-500 font-medium">Certificate Preview</p>
                 <a 
-                  href={previewCert} 
-                  target="_blank"
-                  rel="noreferrer"
+                  href={getDownloadUrl(previewCert)} 
                   download
                   className="bg-blue-600 text-white px-6 py-2.5 rounded-full font-bold shadow hover:bg-blue-700 transition-colors"
                 >

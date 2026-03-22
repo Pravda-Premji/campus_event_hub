@@ -11,7 +11,7 @@ import {
   collection, doc, getDocs, setDoc, updateDoc, deleteDoc, query, where
 } from "firebase/firestore";
 import { addDoc, getDoc} from "firebase/firestore";
-import { arrayUnion } from "firebase/firestore";
+import { arrayUnion, arrayRemove } from "firebase/firestore";
 interface EventItem {
   id: string;
   title: string;
@@ -57,6 +57,7 @@ const [execom, setExecom] = useState<{ id: string; name?: string; role?: string;
 const [member, setMember] = useState({ name: "", role: "" });
 const [memberImage, setMemberImage] = useState<File | null>(null);
 const [galleryFiles, setGalleryFiles] = useState<File[]>([]);
+const [galleryImages, setGalleryImages] = useState<string[]>([]);
 
   // ✅ FETCH EVENTS
  useEffect(() => {
@@ -92,6 +93,7 @@ const [galleryFiles, setGalleryFiles] = useState<File[]>([]);
         intro: clubData.intro || "",
         flagshipEvent: clubData.flagshipEvent || "",
       });
+      setGalleryImages(clubData.gallery || []);
 
       // ✅ STEP 2: FETCH EXECOM
       const execomSnap = await getDocs(
@@ -311,6 +313,8 @@ const handleUploadGallery = async () => {
       gallery: arrayUnion(...urls),
     });
 
+    setGalleryImages(prev => [...prev, ...urls]);
+
     toast.success("Gallery updated!");
     setGalleryFiles([]);
 
@@ -319,12 +323,35 @@ const handleUploadGallery = async () => {
     toast.error("Upload failed");
   }
 };
+
+const handleDeleteGalleryImage = async (url: string) => {
+  try {
+    const parts = url.split('/');
+    const publicId = parts[parts.length - 1].split('.')[0];
+    
+    await fetch(`https://api.cloudinary.com/v1_1/drnrkdzfa/delete_by_token`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ public_id: publicId })
+    });
+
+    await updateDoc(doc(db, "clubs", clubId), {
+      gallery: arrayRemove(url)
+    });
+
+    setGalleryImages(prev => prev.filter(img => img !== url));
+    toast.success("Image deleted");
+  } catch (error) {
+    console.error(error);
+    toast.error("Failed to delete image");
+  }
+};
 const handleDeleteMember = async (id: string) => {
   await deleteDoc(doc(db, "execomMembers", id));
   setExecom(prev => prev.filter(m => m.id !== id));
 };
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-white">
 
       {/* HEADER */}
       <header className="bg-primary px-6 py-4 flex justify-between">
@@ -365,6 +392,22 @@ const handleDeleteMember = async (id: string) => {
 
 </div>
 
+{galleryImages.length > 0 && (
+  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
+    {galleryImages.map((url, i) => (
+      <div key={i} className="relative group">
+        <img src={url} className="rounded-lg object-cover w-full h-32" />
+        <button
+          className="absolute top-2 right-2 bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded text-sm opacity-0 group-hover:opacity-100 transition-opacity"
+          onClick={() => handleDeleteGalleryImage(url)}
+        >
+          Delete
+        </button>
+      </div>
+    ))}
+  </div>
+)}
+
         {/* CLUB PROFILE */}
 <h2 className="text-xl font-bold mt-6">Club Profile</h2>
 
@@ -386,17 +429,6 @@ const handleDeleteMember = async (id: string) => {
     value={clubProfile.flagshipEvent}
     onChange={e => setClubProfile({ ...clubProfile, flagshipEvent: e.target.value })}
   />
-  <input
-  type="file"
-  multiple
-  onChange={(e) =>
-    setGalleryFiles(Array.from(e.target.files || []))
-  }
-/>
-
-<Button onClick={handleUploadGallery}>
-  Upload Images
-</Button>
 
   <Button onClick={handleSaveClubProfile}>
     Save Club Profile

@@ -5,7 +5,7 @@ const StudentLayout = () => {
   return (
     <div className="flex min-h-screen">
       <Sidebar />
-      <div className="flex-1 bg-background">
+      <div className="flex-1 bg-white">
         <Outlet />
       </div>
     </div>
