@@ -157,23 +157,23 @@ useEffect(() => {
           </div>
         )}
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
+        <div className="space-y-16">
           
           {/* 🟢 EXECOM */}
-          <div className="lg:col-span-1">
+          <div>
             <h2 className="text-2xl font-black text-slate-800 mb-6 flex items-center gap-2">
               <User className="w-6 h-6 text-blue-500" />
               Execom Members
             </h2>
 
-            <div className="space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {execom.length === 0 ? (
-                <p className="text-slate-500 italic bg-white/50 p-4 rounded-xl text-center border border-white/60">No members yet</p>
+                <p className="text-slate-500 italic bg-white/50 p-4 rounded-xl text-center border border-white/60 col-span-full">No members yet</p>
               ) : (
                 execom.map((m, i) => (
                   <motion.div
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
                     transition={{ delay: i * 0.05 }}
                     key={m.id}
                     className="flex items-center gap-4 p-4 bg-white/80 backdrop-blur-md rounded-2xl border border-white/60 shadow-sm hover:shadow-md hover:-translate-y-1 transition-all duration-300 group"
@@ -195,14 +195,15 @@ useEffect(() => {
               )}
             </div>
           </div>
+
           {/* 🟢 EVENTS (Mirroring the premium StudentHome event cards) */}
-          <div className="lg:col-span-2">
+          <div>
             <h2 className="text-2xl font-black text-slate-800 mb-6 flex items-center gap-2">
               <Calendar className="w-6 h-6 text-pink-500" />
               Club Events
             </h2>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 perspective-1000">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 perspective-1000">
               {events.length === 0 ? (
                 <p className="text-slate-500 italic bg-white/50 p-6 rounded-2xl text-center border border-white/60 col-span-full">No events yet</p>
               ) : (

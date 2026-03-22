@@ -205,52 +205,56 @@ const Login = () => {
           </h1>
         </div>
 
-        <div className="bg-card p-8 rounded-2xl shadow-xl">
+        <div className="bg-[#1e293b]/70 backdrop-blur-md p-8 rounded-2xl shadow-2xl border border-slate-700/50">
 
           <form onSubmit={handleSubmit} className="space-y-4">
 
             {isSignUp && (
               <div className="space-y-1">
-                <Label>Full Name</Label>
+                <Label className="text-slate-300">Full Name</Label>
                 <Input
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="Your full name"
+                  className="bg-white text-slate-900 border-0 focus-visible:ring-2 focus-visible:ring-orange-500"
                 />
               </div>
             )}
 
             <div className="space-y-1">
-              <Label>Email</Label>
+              <Label className="text-slate-300">Email</Label>
               <Input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="you@example.com"
                 autoComplete="email"
+                className="bg-white text-slate-900 border-0 focus-visible:ring-2 focus-visible:ring-orange-500"
               />
             </div>
 
             <div className="space-y-1">
-              <Label>Password</Label>
+              <Label className="text-slate-300">Password</Label>
               <Input
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
                 autoComplete={isSignUp ? "new-password" : "current-password"}
+                className="bg-white text-slate-900 border-0 focus-visible:ring-2 focus-visible:ring-orange-500"
               />
             </div>
 
             {isSignUp && (
               <div className="space-y-1">
-                <Label>Confirm Password</Label>
+                <Label className="text-slate-300">Confirm Password</Label>
                 <Input
                   type="password"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   placeholder="••••••••"
                   autoComplete="new-password"
+                  className="bg-white text-slate-900 border-0 focus-visible:ring-2 focus-visible:ring-orange-500"
                 />
               </div>
             )}
@@ -258,7 +262,7 @@ const Login = () => {
             <Button
               type="submit"
               disabled={loading}
-              className="w-full bg-secondary"
+              className="w-full bg-orange-500 hover:bg-orange-600 text-white font-bold transition-colors"
             >
               {loading ? "Processing..." : isSignUp ? "Create Account" : "Sign In"}
             </Button>
@@ -269,7 +273,7 @@ const Login = () => {
             <button
               type="button"
               onClick={() => setShowForgot(true)}
-              className="text-sm mt-3 w-full text-muted-foreground hover:underline"
+              className="text-sm mt-3 w-full text-slate-400 hover:text-white hover:underline transition-colors"
             >
               Forgot password?
             </button>
@@ -283,7 +287,7 @@ const Login = () => {
                 setPassword("");
                 setConfirmPassword("");
               }}
-              className="text-secondary text-sm font-semibold hover:underline"
+              className="text-orange-500 text-sm font-semibold hover:text-orange-400 hover:underline transition-colors"
             >
               {isSignUp
                 ? "Already have an account? Sign In"

@@ -669,7 +669,7 @@ const [flippedId, setFlippedId] = useState<string | null>(null);
                         <Award className="w-7 h-7" />
                       </div>
                       <h3 className="text-2xl font-extrabold tracking-tight text-slate-800">
-                        {cert.eventName || "Event Certificate"}
+                        {cert.eventName || events.find((e) => e.id === cert.eventId)?.title || "Event Certificate"}
                       </h3>
                       <p className="text-sm font-semibold text-slate-500 flex items-center gap-2">
                         <Calendar className="w-4 h-4" /> 
