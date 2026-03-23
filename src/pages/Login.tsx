@@ -62,7 +62,7 @@ const Login = () => {
         }
 
         const q = query(
-          collection(db, "allowed_users"),
+          collection(db, "users"),
           where("email", "==", email)
         );
         const allowed = await getDocs(q);

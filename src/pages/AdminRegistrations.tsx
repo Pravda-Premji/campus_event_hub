@@ -230,9 +230,11 @@ const AdminRegistrations = () => {
             className="border rounded p-3 mb-2"
           >
             <p><strong>Name:</strong> {student.studentName}</p>
+            {student.email && <p><strong>Email:</strong> {student.email}</p>}
             <p><strong>Branch:</strong> {student.branch}</p>
             <p><strong>Year:</strong> {student.year}</p>
             <p><strong>Phone:</strong> {student.phone}</p>
+            {student.registeredAt && <p><strong>Registered:</strong> {new Date((student.registeredAt as any).seconds * 1000).toLocaleString()}</p>}
 
             {(student.paymentScreenshot || student.screenshotURL) && (
               <div className="mt-3">

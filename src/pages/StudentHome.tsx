@@ -11,6 +11,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Award,
+  MapPin,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -240,11 +241,7 @@ const [flippedId, setFlippedId] = useState<string | null>(null);
   /* ---------------- FILTER EVENTS ---------------- */
 
 
-  const today = new Date();
-  const yyyy = today.getFullYear();
-  const mm = String(today.getMonth() + 1).padStart(2, '0');
-  const dd = String(today.getDate()).padStart(2, '0');
-  const todayString = `${yyyy}-${mm}-${dd}`;
+  const todayString = new Date().toISOString().split("T")[0];
 
   const filteredEvents = events.filter((e) => {
     const matchesSearch = (e.title || "").toLowerCase().includes(searchQuery.toLowerCase());
@@ -256,7 +253,7 @@ const [flippedId, setFlippedId] = useState<string | null>(null);
       return e.date === todayString;
     }
     if (activeTab === "events") {
-      return e.date >= todayString;
+      return e.date > todayString;
     }
     return true;
   });
@@ -488,22 +485,51 @@ const [flippedId, setFlippedId] = useState<string | null>(null);
           </div>
         </header>
 
-        {tomorrowEvents.length > 0 && (
-          <motion.div 
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="mx-4 sm:mx-8 mt-6 bg-gradient-to-r from-amber-500 to-orange-500 text-white px-6 py-4 rounded-2xl shadow-lg border-2 border-orange-300 flex items-center justify-between"
-          >
-            <div>
-              <h4 className="font-extrabold text-lg flex items-center gap-2 drop-shadow-sm">
-                ⚠️ Upcoming Event Tomorrow
-              </h4>
-              <p className="text-sm font-semibold opacity-95">
-                Don't forget! Your registered event <strong className="px-1 bg-white/20 rounded">{tomorrowEvents[0].title}</strong> is starting soon.
-              </p>
+
+
+        {/* TODAY */}
+
+        <div className="p-4 sm:p-8">
+          {activeTab === "today" && (
+            <div className="space-y-6">
+              {filteredEvents.length === 0 ? (
+                <div className="py-20 text-center text-slate-500 font-medium bg-white/50 backdrop-blur-md rounded-[2.5rem] border border-white/60">
+                  <Clock className="w-16 h-16 mx-auto mb-4 text-purple-300" />
+                  <p className="text-xl">No events today</p>
+                </div>
+              ) : (
+                filteredEvents.map((event) => (
+                  <motion.div 
+                    key={event.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="bg-white/80 backdrop-blur-xl p-8 rounded-3xl shadow-lg border border-white/60 flex flex-col gap-6"
+                  >
+                     <div>
+                       <h3 className="text-3xl font-extrabold text-slate-800 mb-2">{event.title}</h3>
+                       <div className="flex flex-wrap gap-4 text-sm font-semibold text-slate-500">
+                         <span className="flex items-center gap-1.5"><Calendar className="w-4 h-4" /> {event.date}</span>
+                         <span className="flex items-center gap-1.5"><Clock className="w-4 h-4" /> {event.time}</span>
+                         <span className="flex items-center gap-1.5"><MapPin className="w-4 h-4" /> {event.location || (event as any).venue || "Campus"}</span>
+                       </div>
+                     </div>
+                     <p className="text-slate-600 font-medium leading-relaxed">
+                       {event.description || "No description provided."}
+                     </p>
+                     <div>
+                       <button 
+                         onClick={() => navigate(`/student/event/${event.id}`)}
+                         className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-8 py-3 rounded-full font-bold shadow-lg hover:shadow-xl hover:scale-105 transition-all"
+                       >
+                         Register
+                       </button>
+                     </div>
+                  </motion.div>
+                ))
+              )}
             </div>
-          </motion.div>
-        )}
+          )}
+        </div>
 
         {/* PROFILE */}
 
@@ -704,11 +730,51 @@ const [flippedId, setFlippedId] = useState<string | null>(null);
         <div className="p-4 sm:p-8">
 
           {activeTab === "events" && (
-            <motion.div 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8 perspective-1000"
-            >
+            <div className="space-y-8">
+              {tomorrowEvents.length > 0 && (
+                <div className="mb-2">
+                  <h2 className="text-xl font-bold text-slate-800 mb-4 flex items-center gap-2">
+                    <Star className="w-6 h-6 text-amber-500" />
+                    Registered Upcoming Events Notifications
+                  </h2>
+                  <div className="flex flex-col gap-4">
+                    {tomorrowEvents.map((event) => (
+                      <motion.div 
+                        key={`notification-${event.id}`}
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="bg-gradient-to-r from-amber-500 to-orange-500 text-white px-6 py-5 rounded-2xl shadow-lg border-2 border-orange-300 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
+                      >
+                        <div className="space-y-1">
+                          <h4 className="font-extrabold text-xl flex items-center gap-2 drop-shadow-sm">
+                            ⚠️ {event.title}
+                          </h4>
+                          <p className="text-sm font-semibold opacity-95">
+                            Starts in less than 24 hours!
+                          </p>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-3 text-sm font-bold bg-black/10 px-4 py-2 rounded-xl backdrop-blur-sm">
+                          <span className="flex items-center gap-1.5">
+                            <Calendar className="w-4 h-4" /> {event.date}
+                          </span>
+                          <span className="flex items-center gap-1.5">
+                            <Clock className="w-4 h-4" /> {event.time}
+                          </span>
+                          <span className="flex items-center gap-1.5">
+                            <User className="w-4 h-4" /> {event.location || (event as any).venue || "Campus"}
+                          </span>
+                        </div>
+                      </motion.div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
+              <motion.div 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8 perspective-1000"
+              >
 
               {filteredEvents.map((event, i) => (
                 <motion.div
@@ -770,7 +836,8 @@ const [flippedId, setFlippedId] = useState<string | null>(null);
                 </motion.div>
               ))}
 
-            </motion.div>
+              </motion.div>
+            </div>
           )}
 
           {activeTab === "certificates" && (

@@ -12,6 +12,7 @@ import {
 import { query, where, getDocs } from "firebase/firestore";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft, CheckCircle2, QrCode, Upload, Zap, Calendar, Clock, MapPin } from "lucide-react";
+import { toast } from "sonner";
 const EventDetails = () => {
 const { eventId } = useParams();
 const navigate = useNavigate();
@@ -37,6 +38,39 @@ const [event, setEvent] = useState<EventDetailItem | null>(null);
 const [showRegister, setShowRegister] = useState(false);
 const [paymentFile, setPaymentFile] = useState<File | null>(null);
 const [showImageModal, setShowImageModal] = useState(false);
+const [isRegistered, setIsRegistered] = useState(false);
+
+  useEffect(() => {
+    const checkRegistrationStatus = async () => {
+      if (!eventId) return;
+      const user = auth.currentUser;
+      if (!user) return;
+      
+      try {
+        const q = query(
+          collection(db, "registrations"),
+          where("eventId", "==", eventId),
+          where("userId", "==", user.uid)
+        );
+        const snap = await getDocs(q);
+        if (!snap.empty) {
+          setIsRegistered(true);
+        }
+      } catch (err) {
+        console.error("Failed to check registration", err);
+      }
+    };
+    
+    // Quick check if auth is available, alternatively could depend on a user state
+    if (auth.currentUser) {
+      checkRegistrationStatus();
+    } else {
+      const unsubscribe = auth.onAuthStateChanged((user) => {
+        if (user) checkRegistrationStatus();
+      });
+      return () => unsubscribe();
+    }
+  }, [eventId]);
 
   useEffect(() => {
     const fetchEvent = async () => {
@@ -56,6 +90,60 @@ const [showImageModal, setShowImageModal] = useState(false);
     fetchEvent();
   }, [eventId]);
   //store things to admin
+  const handleFreeRegistration = async () => {
+    try {
+      const user = auth.currentUser;
+      if (!user) {
+        toast.error("Please login first");
+        return;
+      }
+
+      if (isRegistered) {
+        toast.error("Already Registered");
+        return;
+      }
+      
+      const userDoc = await getDoc(doc(db, "users", user.uid));
+      const userData = userDoc.data();
+
+      // Duplicate check dynamically against firestore
+      const existingQuery = query(
+        collection(db, "registrations"),
+        where("eventId", "==", eventId),
+        where("userId", "==", user.uid)
+      );
+      const existingSnap = await getDocs(existingQuery);
+      if (!existingSnap.empty) {
+        toast.error("Already Registered");
+        setIsRegistered(true);
+        return;
+      }
+
+      await addDoc(collection(db, "registrations"), {
+        userId: user.uid,
+        eventId: eventId,
+        email: user.email || "",
+        studentName: userData?.name || "",
+        branch: userData?.branch || "",
+        year: userData?.year || "",
+        phone: userData?.phone || "",
+        registeredAt: serverTimestamp(),
+        createdAt: serverTimestamp()
+      });
+
+      await updateDoc(doc(db, "events", eventId!), {
+        registeredCount: increment(1),
+      });
+
+      toast.success("Successfully Registered");
+      setIsRegistered(true);
+
+    } catch (err) {
+      console.error(err);
+      toast.error("Something went wrong");
+    }
+  };
+
   const handleSubmitPayment = async () => {
   try {
     const user = auth.currentUser;
@@ -242,8 +330,16 @@ await addDoc(collection(db, "registrations"), {
 
           {/* FREE EVENT */}
           {event.eventType === "free" && (
-            <button className="w-full sm:w-auto bg-gradient-to-r from-emerald-500 to-teal-500 text-white px-10 py-4 rounded-full font-bold text-lg shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300">
-              Confirm Free Registration
+            <button 
+              onClick={handleFreeRegistration}
+              disabled={isRegistered}
+              className={`w-full sm:w-auto px-10 py-4 rounded-full font-bold text-lg shadow-lg transition-all duration-300 ${
+                isRegistered 
+                  ? "bg-slate-300 text-slate-500 cursor-not-allowed shadow-none" 
+                  : "bg-gradient-to-r from-emerald-500 to-teal-500 text-white hover:shadow-xl hover:scale-105"
+              }`}
+            >
+              {isRegistered ? "Registered" : "Confirm Free Registration"}
             </button>
           )}
 

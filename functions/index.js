@@ -86,18 +86,27 @@ async function processReminderEmails(eventId, eventData) {
       from: '"Campus Event Hub" <your-email@gmail.com>', // ⚠️ REPLACE with your email
       to: studentEmail,
       subject: "Reminder: Your Event Starts Tomorrow",
-      text: `Hello,\n\nThis is a reminder that your event is scheduled tomorrow.\n\nEvent: ${eventData.title}\nDate: ${eventData.date}\nTime: ${eventData.time}\nVenue: ${eventData.venue || eventData.location || "Campus"}\n\nPlease be on time.`,
+      text: `Hello,
+
+This is a reminder that your registered event starts in 24 hours.
+
+Event Name: ${eventData.title}
+Date: ${eventData.date}
+Time: ${eventData.time}
+Venue: ${eventData.venue || eventData.location || "Campus"}
+
+Please arrive on time.`,
       html: `
         <div style="font-family: sans-serif; padding: 20px;">
           <p>Hello,</p>
-          <p>This is a reminder that your event is scheduled tomorrow.</p>
+          <p>This is a reminder that your registered event starts in 24 hours.</p>
           <div style="background: #f1f5f9; padding: 15px; border-radius: 8px;">
-            <p><strong>Event:</strong> ${eventData.title}</p>
+            <p><strong>Event Name:</strong> ${eventData.title}</p>
             <p><strong>Date:</strong> ${eventData.date}</p>
             <p><strong>Time:</strong> ${eventData.time}</p>
             <p><strong>Venue:</strong> ${eventData.venue || eventData.location || "Campus"}</p>
           </div>
-          <p>Please be on time.</p>
+          <p>Please arrive on time.</p>
         </div>
       `,
     };
