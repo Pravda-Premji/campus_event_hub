@@ -210,9 +210,15 @@ const AdminRegistrations = () => {
 
   return (
     <div className="p-6">
-      <h2 className="text-xl font-semibold mb-4">
-        Registered Students
-      </h2>
+      <div className="mb-6 flex flex-col gap-2">
+        <h2 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-purple-600">
+          Registered Students
+        </h2>
+        <div className="inline-flex items-center gap-2 bg-blue-50 border border-blue-200 text-blue-800 px-4 py-2 rounded-lg font-bold shadow-sm w-fit">
+          <span className="text-lg">Total Participants:</span>
+          <span className="text-xl bg-blue-600 text-white px-3 py-0.5 rounded-md">{registrations.length}</span>
+        </div>
+      </div>
 
       {registrations.map(student => {
         const studentCert = uploadedCerts.find(c => c.userId === student.userId);
@@ -227,6 +233,19 @@ const AdminRegistrations = () => {
             <p><strong>Branch:</strong> {student.branch}</p>
             <p><strong>Year:</strong> {student.year}</p>
             <p><strong>Phone:</strong> {student.phone}</p>
+
+            {(student.paymentScreenshot || student.screenshotURL) && (
+              <div className="mt-3">
+                <Button 
+                  size="sm" 
+                  variant="default" 
+                  className="bg-purple-600 hover:bg-purple-700 text-white shadow-md"
+                  onClick={() => window.open((student.paymentScreenshot || student.screenshotURL) as string, '_blank')}
+                >
+                  View Payment
+                </Button>
+              </div>
+            )}
             
             <div className="mt-3 pt-3 border-t">
               <p className="text-sm font-semibold mb-2">Upload Certificate</p>

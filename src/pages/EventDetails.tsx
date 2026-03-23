@@ -82,6 +82,11 @@ if (!existingSnap.empty) {
   return;
 }
 
+    if ((event?.eventType === "paid" || event?.isPaid) && !paymentFile) {
+      alert("Please upload payment screenshot before registering");
+      return;
+    }
+
     // 🔥 UPLOAD IMAGE TO CLOUDINARY
     let screenshotURL = "";
 
@@ -117,7 +122,9 @@ await addDoc(collection(db, "registrations"), {
   phone: userData.phone || "",
   email: user.email || "",
   screenshotURL,
+  paymentScreenshot: screenshotURL, // Added for new requirement
   createdAt: serverTimestamp(),
+  registeredAt: serverTimestamp(), // Added for new requirement
 });
     await updateDoc(doc(db, "events", eventId!), {
       registeredCount: increment(1),

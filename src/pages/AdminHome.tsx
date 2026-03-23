@@ -353,6 +353,16 @@ const handleDeleteMember = async (id: string) => {
   await deleteDoc(doc(db, "execomMembers", id));
   setExecom(prev => prev.filter(m => m.id !== id));
 };
+
+  const today = new Date();
+  const yyyy = today.getFullYear();
+  const mm = String(today.getMonth() + 1).padStart(2, '0');
+  const dd = String(today.getDate()).padStart(2, '0');
+  const todayString = `${yyyy}-${mm}-${dd}`;
+
+  const upcomingEvents = events.filter(e => !e.date || e.date >= todayString);
+  const pastEvents = events.filter(e => e.date && e.date < todayString);
+
   return (
     <div className="min-h-screen bg-white">
 
@@ -545,9 +555,10 @@ const handleDeleteMember = async (id: string) => {
           </div>
         )}
 
-        {/* EVENTS */}
-        <div className="mt-6 space-y-4">
-          {events.map(event => (
+        {/* UPCOMING EVENTS */}
+        <h2 className="text-xl font-bold mt-8 mb-4">Upcoming Events</h2>
+        <div className="mt-2 space-y-4">
+          {upcomingEvents.map(event => (
             <div key={event.id} className="p-4 border rounded">
 
               {event.posterURL && (
@@ -599,6 +610,53 @@ const handleDeleteMember = async (id: string) => {
             </div>
           ))}
         </div>
+
+        {/* PAST EVENTS */}
+        {pastEvents.length > 0 && (
+          <>
+            <h2 className="text-xl font-bold mt-8 mb-4 text-slate-500">Past Events</h2>
+            <div className="mt-2 space-y-4">
+              {pastEvents.map(event => (
+                <div key={event.id} className="p-4 border rounded bg-slate-50 opacity-90">
+
+                  {event.posterURL && (
+                    <img src={event.posterURL} className="w-full h-40 object-cover mb-2 grayscale-[30%]" />
+                  )}
+
+                  <h3 className="font-bold text-slate-700">{event.title}</h3>
+                  <p className="text-slate-600">{event.description}</p>
+
+                  <p className="text-sm text-slate-500">{event.date} | {event.time}</p>
+                  <p className="text-sm text-slate-500">{event.location}</p>
+
+                  <div className="flex gap-2 mt-4">
+                    <Button onClick={() => handleDeleteEvent(event.id)} variant="outline">
+                      <Trash2 className="w-4 h-4 text-red-500" />
+                    </Button>
+
+                    <button
+                       onClick={() =>
+                        navigate(`/admin/registrations/${event.id}`)
+                    }
+                    className="bg-blue-100 text-blue-900 hover:bg-blue-200 font-semibold px-4 py-2 rounded transition-colors"
+                    >
+                       View Registrations
+                    </button>
+
+                    <button
+                       onClick={() =>
+                        navigate(`/admin/registrations/${event.id}`)
+                    }
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2 rounded shadow-sm hover:shadow transition-all"
+                    >
+                       Upload Certificate
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
 
         {/* (FORM WAS HERE, MOVED TO TOP) */}
       </div>

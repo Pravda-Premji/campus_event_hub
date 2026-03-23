@@ -76,6 +76,7 @@ const StudentHome = () => {
   const navigate = useNavigate();
 
   const [collapsed, setCollapsed] = useState(false);
+  const [showDropdown, setShowDropdown] = useState(false);
 
   const [name, setName] = useState("");
   const [registerNumber, setRegisterNumber] = useState("");
@@ -239,9 +240,26 @@ const [flippedId, setFlippedId] = useState<string | null>(null);
   /* ---------------- FILTER EVENTS ---------------- */
 
 
- const filteredEvents = events.filter((e) =>
-  (e.title || "").toLowerCase().includes(searchQuery.toLowerCase())
-);
+  const today = new Date();
+  const yyyy = today.getFullYear();
+  const mm = String(today.getMonth() + 1).padStart(2, '0');
+  const dd = String(today.getDate()).padStart(2, '0');
+  const todayString = `${yyyy}-${mm}-${dd}`;
+
+  const filteredEvents = events.filter((e) => {
+    const matchesSearch = (e.title || "").toLowerCase().includes(searchQuery.toLowerCase());
+    if (!matchesSearch) return false;
+
+    if (!e.date) return false;
+
+    if (activeTab === "today") {
+      return e.date === todayString;
+    }
+    if (activeTab === "events") {
+      return e.date >= todayString;
+    }
+    return true;
+  });
   /* ---------------- IMAGE UPLOAD ---------------- */
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -426,14 +444,46 @@ const [flippedId, setFlippedId] = useState<string | null>(null);
               </div>
             )}
             
-            <div className="flex items-center justify-center shrink-0">
-              {photoURL ? (
-                <img src={photoURL} className="w-10 h-10 rounded-full object-cover border border-slate-200" alt="Profile" />
-              ) : (
-                <div className="w-10 h-10 rounded-full bg-blue-500 text-white flex items-center justify-center font-bold">
-                  {name ? name.charAt(0).toUpperCase() : "U"}
-                </div>
-              )}
+            <div className="relative">
+              <button 
+                className="flex items-center justify-center shrink-0 outline-none rounded-full ring-offset-2 focus-visible:ring-2 focus-visible:ring-blue-500 hover:scale-105 transition-all"
+                onClick={() => setShowDropdown(!showDropdown)}
+              >
+                {photoURL ? (
+                  <img src={photoURL} className="w-10 h-10 rounded-full object-cover border border-slate-200 shadow-sm" alt="Profile" />
+                ) : (
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 text-white flex items-center justify-center font-bold text-lg shadow-sm">
+                    {name ? name.charAt(0).toUpperCase() : "U"}
+                  </div>
+                )}
+              </button>
+              
+              <AnimatePresence>
+                {showDropdown && (
+                  <motion.div 
+                    initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                    transition={{ duration: 0.15 }}
+                    className="absolute right-0 mt-3 bg-white shadow-2xl rounded-2xl p-4 min-w-[220px] border border-slate-100 z-50 origin-top-right flex flex-col gap-1"
+                  >
+                    <p className="font-extrabold text-slate-800 text-base">{name || "Student Name"}</p>
+                    <p className="text-sm font-medium text-slate-500 truncate">{auth.currentUser?.email || "student@example.com"}</p>
+                    
+                    <div className="h-px bg-slate-100 my-2 w-full" />
+                    
+                    <button 
+                      onClick={async () => {
+                        await auth.signOut();
+                        navigate("/");
+                      }}
+                      className="text-left py-2 px-3 text-sm font-bold text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                    >
+                      Sign Out
+                    </button>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
           </div>
         </header>
@@ -600,6 +650,49 @@ const [flippedId, setFlippedId] = useState<string | null>(null);
                 >
                   {isEditing ? "Save Changes" : "Edit Profile"}
                 </Button>
+              </div>
+
+              {/* 🔥 MY REGISTERED EVENTS SECTION */}
+              <div className="mt-12 pt-8 border-t border-slate-200 relative z-10">
+                <h3 className="text-xl font-bold text-slate-800 mb-6 flex items-center gap-2">
+                  <Star className="w-6 h-6 text-blue-500" />
+                  My Registered Events
+                </h3>
+                
+                {myRegistrations.length === 0 ? (
+                  <div className="bg-slate-50 border border-slate-200 rounded-xl p-8 text-center">
+                    <p className="text-slate-500 font-medium">You haven't registered for any events yet.</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {myRegistrations.map((reg, idx) => {
+                      const associatedEvent = events.find(e => e.id === reg.eventId);
+                      if (!associatedEvent) return null;
+                      return (
+                        <div key={idx} className="bg-white border border-slate-200 hover:border-blue-300 rounded-xl p-5 shadow-sm hover:shadow-md transition-all flex flex-col gap-2 relative overflow-hidden group">
+                          <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-blue-400 to-purple-500 transform scale-y-0 group-hover:scale-y-100 transition-transform origin-top z-0" />
+                          <div className="relative z-10">
+                            <h4 className="font-bold text-slate-800 text-lg group-hover:text-blue-700 transition-colors">
+                              {associatedEvent.title}
+                            </h4>
+                            <div className="flex items-center gap-3 mt-2 text-sm text-slate-500 font-medium">
+                              <span className="flex items-center gap-1.5 bg-slate-50 px-2 py-1 rounded-md border border-slate-100">
+                                <Calendar className="w-3.5 h-3.5 text-purple-500" /> 
+                                {associatedEvent.date || "TBD"}
+                              </span>
+                              {associatedEvent.time && (
+                                <span className="flex items-center gap-1.5 bg-slate-50 px-2 py-1 rounded-md border border-slate-100">
+                                  <Clock className="w-3.5 h-3.5 text-pink-500" /> 
+                                  {associatedEvent.time}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
 
             </div>
