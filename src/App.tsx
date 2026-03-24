@@ -8,7 +8,8 @@ import ClubPage from "./pages/ClubPage";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import { Toaster } from "sonner";
 import AdminRegistrations from "./pages/AdminRegistrations";
-
+import SuperAdminPage from "./pages/SuperAdminPage";
+import NotFound from "./pages/NotFound";
 function App() {
   return (
     <>
@@ -63,6 +64,17 @@ function App() {
     </ProtectedRoute>
   }
 />
+
+<Route
+  path="/super-admin"
+  element={
+    <ProtectedRoute requiredRole="superAdmin">
+      <SuperAdminPage />
+    </ProtectedRoute>
+  }
+/>
+
+<Route path="*" element={<NotFound />} />
       </Routes>
       
       {/* Toasts */}

@@ -15,6 +15,7 @@ import {
   sendPasswordResetEmail,
   sendEmailVerification,
   updateProfile,
+  fetchSignInMethodsForEmail,
 } from "firebase/auth";
 
 import {
@@ -25,6 +26,8 @@ import {
   query,
   where,
   getDocs,
+  addDoc,
+  deleteDoc,
 } from "firebase/firestore";
 
 const Login = () => {
@@ -61,31 +64,45 @@ const Login = () => {
           return;
         }
 
-        const q = query(
-          collection(db, "users"),
-          where("email", "==", email)
-        );
-        const allowed = await getDocs(q);
-
-        if (allowed.empty) {
-          toast.error("You are not allowed to register. Contact admin.");
+        const methods = await fetchSignInMethodsForEmail(auth, email);
+        if (methods.length > 0) {
+          toast.error("Account already exists. Please login.");
           setLoading(false);
           return;
         }
 
-        const allowedData = allowed.docs[0].data();
+        const allowedQ = query(
+          collection(db, "allowed_users"),
+          where("email", "==", email.toLowerCase().trim())
+        );
+        const allowedSnap = await getDocs(allowedQ);
 
+        if (allowedSnap.empty) {
+          toast.error("You are not authorized. Contact admin.");
+          setLoading(false);
+          return;
+        }
+
+        const allowedData = allowedSnap.docs[0].data();
+
+        console.log("Creating user...");
         const cred = await createUserWithEmailAndPassword(auth, email, password);
         const user = cred.user;
+        const uid = user.uid;
+        
+        console.log("UID:", uid);
 
-        if (name) await updateProfile(user, { displayName: name });
+        if (allowedData.name) await updateProfile(user, { displayName: allowedData.name });
 
-        await setDoc(doc(db, "users", user.uid), {
-          name: name || "",
-          email,
+        // Add to users
+        await setDoc(doc(db, "users", uid), {
+          name: allowedData.name || "",
+          email: email.toLowerCase().trim(),
           role: allowedData.role,
           club: allowedData.club || null,
         });
+
+        // (They are already in allowed_users because SuperAdmin put them there, so no need to transfer)
 
         await sendEmailVerification(user);
 
@@ -106,6 +123,20 @@ const Login = () => {
 
       if (!user) {
         toast.error("Authentication failed. Please try again.");
+        setLoading(false);
+        return;
+      }
+
+      // Check allowed_users AFTER sign-in
+      const allowedLoginCheck = await getDocs(
+        query(
+          collection(db, "allowed_users"),
+          where("email", "==", user.email?.toLowerCase().trim())
+        )
+      );
+
+      if (allowedLoginCheck.empty) {
+        toast.error("Not authorized");
         setLoading(false);
         return;
       }
@@ -137,7 +168,12 @@ const Login = () => {
         return;
       }
 
-      if (data.role === "admin" || data.role === "club_admin") {
+      if (data.role === "superAdmin") {
+        navigate("/super-admin", { replace: true });
+        return;
+      }
+
+      if (data.role === "admin" || data.role === "club_admin" || data.role === "clubAdmin") {
         navigate("/admin", { replace: true });
         return;
       }
@@ -153,6 +189,8 @@ const Login = () => {
         toast.error("Incorrect password or email. Please try again.");
       } else if (code === "auth/user-not-found") {
         toast.error("No account found with this email.");
+      } else if (code === "auth/email-already-in-use") {
+        toast.error("This account is already created. Please login instead.");
       } else if (code === "auth/too-many-requests") {
         toast.error("Too many failed attempts. Please try again later.");
       } else {
