@@ -53,6 +53,9 @@ const AdminHome = () => {
   flagshipEvent: "",
 });
 
+const [announcementTitle, setAnnouncementTitle] = useState("");
+const [announcementMessage, setAnnouncementMessage] = useState("");
+
 const [execom, setExecom] = useState<{ id: string; name?: string; role?: string; imageURL?: string; clubId?: string; [key: string]: unknown }[]>([]);
 const [member, setMember] = useState({ name: "", role: "" });
 const [memberImage, setMemberImage] = useState<File | null>(null);
@@ -241,6 +244,34 @@ const handleSaveClubProfile = async () => {
     toast.error("Error saving profile");
   }
 };
+
+const handlePostAnnouncement = async () => {
+  if (!announcementTitle || !announcementMessage) {
+    toast.error("Please fill in both title and message");
+    return;
+  }
+  try {
+    const user = auth.currentUser;
+    if (!user) return;
+
+    await addDoc(collection(db, "announcements"), {
+      title: announcementTitle,
+      message: announcementMessage,
+      clubId: clubId,
+      createdBy: user.uid,
+      createdAt: new Date(),
+      readBy: []
+    });
+
+    toast.success("Announcement posted successfully");
+    setAnnouncementTitle("");
+    setAnnouncementMessage("");
+  } catch (err) {
+    console.error(err);
+    toast.error("Failed to post announcement");
+  }
+};
+
 const handleAddExecom = async () => {
   if (!member.name || !member.role) {
     toast.error("Fill all fields");
@@ -445,6 +476,27 @@ const handleDeleteMember = async (id: string) => {
 
   <Button onClick={handleSaveClubProfile}>
     Save Club Profile
+  </Button>
+</div>
+
+{/* ANNOUNCEMENTS */}
+<h2 className="text-xl font-bold mt-6">Announcements</h2>
+
+<div className="bg-card p-4 rounded mt-3 space-y-3 border border-border">
+  <Input
+    placeholder="Announcement Title"
+    value={announcementTitle}
+    onChange={e => setAnnouncementTitle(e.target.value)}
+  />
+
+  <Textarea
+    placeholder="Announcement Message"
+    value={announcementMessage}
+    onChange={e => setAnnouncementMessage(e.target.value)}
+  />
+
+  <Button onClick={handlePostAnnouncement} className="bg-blue-600 hover:bg-blue-700 text-white">
+    Post Announcement
   </Button>
 </div>
 

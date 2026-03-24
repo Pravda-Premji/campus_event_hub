@@ -12,6 +12,7 @@ import {
   ChevronRight,
   Award,
   MapPin,
+  Bell,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -29,6 +30,9 @@ import {
   query,
   where,
   orderBy,
+  onSnapshot,
+  limit,
+  arrayUnion,
 } from "firebase/firestore";
 
 interface EventItem {
@@ -78,6 +82,10 @@ const StudentHome = () => {
 
   const [collapsed, setCollapsed] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
+  const [showAnnouncements, setShowAnnouncements] = useState(false);
+
+  const [announcements, setAnnouncements] = useState<{id: string; title: string; message: string; createdAt: Date; readBy?: string[]}[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   const [name, setName] = useState("");
   const [registerNumber, setRegisterNumber] = useState("");
@@ -157,6 +165,59 @@ const [flippedId, setFlippedId] = useState<string | null>(null);
 
   fetchData();
 }, []);
+
+  /* ---------------- LOAD ANNOUNCEMENTS ---------------- */
+  useEffect(() => {
+    const q = query(
+      collection(db, "announcements"),
+      orderBy("createdAt", "desc"),
+      limit(10)
+    );
+
+    const unsubscribe = onSnapshot(q, (snap) => {
+      const list = snap.docs.map(d => ({
+        id: d.id,
+        title: d.data().title || "",
+        message: d.data().message || "",
+        createdAt: d.data().createdAt?.toDate() || new Date(),
+        readBy: d.data().readBy || [],
+        ...d.data(),
+      })) as {id: string; title: string; message: string; createdAt: Date; readBy?: string[]}[];
+      
+      setAnnouncements(list);
+      
+      // We calculate unreadCount here, but what if auth.currentUser is not yet populated?
+      // It's usually fine since this component is under ProtectedRoute 
+      // but just to be safe, we check it.
+      const user = auth.currentUser;
+      if (user) {
+        setUnreadCount(list.filter(a => !(a.readBy || []).includes(user.uid)).length);
+      }
+    }, (error) => {
+      console.error("Error fetching announcements:", error);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  const handleOpenAnnouncements = async () => {
+    setShowAnnouncements(!showAnnouncements);
+    if (!showAnnouncements) {
+      const user = auth.currentUser;
+      if (!user) return;
+      const unreadList = announcements.filter(a => !(a.readBy || []).includes(user.uid));
+      if (unreadList.length > 0) {
+        try {
+          for (const ann of unreadList) {
+            const docRef = doc(db, "announcements", ann.id);
+            await updateDoc(docRef, { readBy: arrayUnion(user.uid) });
+          }
+        } catch (err) {
+          console.error("Error marking announcements as read", err);
+        }
+      }
+    }
+  };
 
   /* ---------------- LOAD PROFILE ---------------- */
 
@@ -440,6 +501,80 @@ const [flippedId, setFlippedId] = useState<string | null>(null);
                 />
               </div>
             )}
+            {/* ANNOTATIONS / BELL ICON */}
+            <div className="relative">
+              <button
+                className="flex items-center justify-center shrink-0 outline-none rounded-full ring-offset-2 focus-visible:ring-2 focus-visible:ring-blue-500 hover:scale-105 transition-all text-slate-500 hover:text-blue-500 p-2"
+                onClick={handleOpenAnnouncements}
+              >
+                <Bell className="w-6 h-6" />
+                {unreadCount > 0 && (
+                  <span className="absolute top-1 right-1 bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full border-2 border-white shadow-sm leading-none min-w-[18px] text-center flex items-center justify-center">
+                    {unreadCount > 9 ? "9+" : unreadCount}
+                  </span>
+                )}
+              </button>
+
+              <AnimatePresence>
+                {showAnnouncements && (
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                    transition={{ duration: 0.15 }}
+                    className="absolute right-0 mt-3 bg-white shadow-2xl rounded-2xl p-4 w-80 sm:w-96 border border-slate-100 z-50 origin-top-right flex flex-col gap-3 max-h-[80vh] overflow-y-auto styled-scrollbar"
+                  >
+                    <div className="flex items-center justify-between mb-1">
+                      <h3 className="font-extrabold text-slate-800 text-lg">Announcements</h3>
+                      {unreadCount > 0 && (
+                        <span className="bg-blue-100 text-blue-700 text-xs font-bold px-2 py-1 rounded-full">
+                          {unreadCount} New
+                        </span>
+                      )}
+                    </div>
+                    
+                    <div className="h-px bg-slate-100 w-full" />
+                    
+                    {announcements.length === 0 ? (
+                      <div className="text-center py-8 text-slate-400">
+                        <Bell className="w-8 h-8 mx-auto mb-2 opacity-20" />
+                        <p className="text-sm font-medium">No announcements yet</p>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col gap-3">
+                        {announcements.map((ann) => {
+                          const isUnread = !(ann.readBy || []).includes(auth.currentUser?.uid || "");
+                          return (
+                            <div 
+                              key={ann.id} 
+                              className={`p-3 rounded-xl border transition-colors ${
+                                isUnread 
+                                  ? "bg-blue-50 border-blue-100 shadow-sm" 
+                                  : "bg-white border-slate-100 hover:bg-slate-50"
+                              }`}
+                            >
+                              <div className="flex items-start justify-between gap-2 mb-1">
+                                <h4 className={`font-bold text-sm ${isUnread ? "text-blue-900" : "text-slate-800"}`}>
+                                  {ann.title}
+                                </h4>
+                                <span className="text-[10px] text-slate-400 font-medium whitespace-nowrap shrink-0 mt-0.5">
+                                  {ann.createdAt instanceof Date 
+                                    ? ann.createdAt.toLocaleDateString(undefined, { month: 'short', day: 'numeric'}) 
+                                    : "Now"}
+                                </span>
+                              </div>
+                              <p className={`text-xs ${isUnread ? "text-blue-700/80" : "text-slate-500"} line-clamp-3 leading-relaxed`}>
+                                {ann.message}
+                              </p>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
             
             <div className="relative">
               <button 
