@@ -102,11 +102,11 @@
 
 @layer base {
   * {
-    @apply border-gray-200;
+    @apply border-gray-200 dark:border-slate-700;
   }
 
   body {
-    @apply bg-white text-slate-900;
+    @apply bg-white text-slate-900 dark:bg-slate-900 dark:text-gray-100 transition-colors duration-300;
     font-family: var(--font-body);
   }
 

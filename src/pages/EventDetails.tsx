@@ -228,184 +228,179 @@ await addDoc(collection(db, "registrations"), {
   // ✅ LOADING STATE
   if (!event) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 flex items-center justify-center">
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center">
         <div className="animate-pulse flex flex-col items-center gap-4">
-          <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
-          <h2 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-purple-600">Loading experience...</h2>
+          <div className="w-16 h-16 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+          <h2 className="text-2xl font-bold text-slate-800 dark:text-white">Loading experience...</h2>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 relative overflow-hidden selection:bg-purple-200">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 relative overflow-x-hidden transition-colors duration-300 flex flex-col">
       
       {/* Abstract Background Orbs */}
-      <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-blue-400/20 rounded-full blur-[120px] pointer-events-none" />
-      <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-pink-400/20 rounded-full blur-[120px] pointer-events-none" />
+      <div className="fixed top-[-10%] left-[-10%] w-[40%] h-[40%] bg-indigo-400/10 dark:bg-indigo-600/10 rounded-full blur-[120px] pointer-events-none z-0" />
+      <div className="fixed bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-purple-400/10 dark:bg-purple-600/10 rounded-full blur-[120px] pointer-events-none z-0" />
 
-      <div className="max-w-5xl mx-auto px-6 py-12 relative z-10">
-
-{/* 🔙 BACK */}
-<button
-  onClick={() => navigate(-1)}
-  className="group flex items-center gap-2 mb-8 text-slate-500 hover:text-blue-600 font-semibold transition-colors bg-white/50 backdrop-blur-md px-5 py-2.5 rounded-full shadow-sm hover:shadow-md border border-white/60"
->
-  <ArrowLeft className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />
-  Back to Events
-</button>
-
-<motion.div
-  initial={{ opacity: 0, scale: 0.95, y: 30 }}
-  animate={{ opacity: 1, scale: 1, y: 0 }}
-  transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-  className="bg-white/70 backdrop-blur-2xl rounded-[3rem] p-4 sm:p-6 md:p-8 shadow-[0_20px_60px_rgba(0,0,0,0.05)] border border-white/80"
->
-
-  {/* 🖼 POSTER */}
-  <div 
-    className="relative w-full h-80 md:h-[32rem] rounded-[2.5rem] overflow-hidden shadow-2xl mb-12 border-4 border-white group cursor-pointer"
-    onClick={() => setShowImageModal(true)}
-  >
-    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent z-10 pointer-events-none" />
-    <img
-      src={event.posterURL}
-      alt={event.title}
-      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out"
-    />
-  </div>
-
-  <div className="px-4 md:px-12 pb-12">
-    
-    {/* 📝 DETAILS */}
-    <h1 className="text-4xl sm:text-5xl md:text-7xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 mb-6 drop-shadow-sm leading-tight text-center sm:text-left">
-      {event.title}
-    </h1>
-
-    {/* 📅 META INFO */}
-    <div className="flex flex-wrap items-center gap-4 mb-8 text-slate-700 font-bold justify-center sm:justify-start">
-      <div className="flex items-center gap-2 bg-blue-50/80 backdrop-blur-sm px-5 py-2.5 rounded-2xl border border-blue-200 shadow-sm">
-        <Calendar className="w-5 h-5 text-blue-500" />
-        {event.date || "TBD"}
-      </div>
-      <div className="flex items-center gap-2 bg-purple-50/80 backdrop-blur-sm px-5 py-2.5 rounded-2xl border border-purple-200 shadow-sm">
-        <Clock className="w-5 h-5 text-purple-500" />
-        {event.time || "TBD"}
-      </div>
-      <div className="flex items-center gap-2 bg-pink-50/80 backdrop-blur-sm px-5 py-2.5 rounded-2xl border border-pink-200 shadow-sm">
-        <MapPin className="w-5 h-5 text-pink-500" />
-        {event.location || event.venue || "Campus"}
-      </div>
-    </div>
-
-    <p className="text-lg md:text-xl text-slate-600 leading-relaxed font-medium mb-16 max-w-4xl">
-      {event.description}
-    </p>
-
-    {/* CTA */}
-    {!showRegister ? (
-      <div className="flex justify-center">
-        <button
-          onClick={() => setShowRegister(true)}
-          className="group relative inline-flex items-center gap-4 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 text-white px-12 py-5 rounded-full text-xl font-black shadow-lg hover:shadow-2xl hover:scale-105 hover:brightness-110 transition-all duration-300 overflow-hidden"
-        >
-          <div className="absolute inset-0 bg-white/20 w-full translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700 ease-in-out" />
-          <Zap className="w-6 h-6 animate-pulse" />
-          Register Now
-        </button>
-      </div>
-    ) : (
-      <motion.div
-        initial={{ opacity: 0, height: 0, y: 20 }}
-        animate={{ opacity: 1, height: "auto", y: 0 }}
-        className="mt-8 bg-white/90 rounded-[2.5rem] p-10 shadow-xl border border-blue-100"
+      {/* Hero Banner Area */}
+      <div 
+        className="w-full h-80 md:h-[32rem] relative z-10 cursor-zoom-in"
+        onClick={() => setShowImageModal(true)}
       >
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-slate-900/60 to-slate-50 dark:to-slate-950 z-10 pointer-events-none" />
+        <img 
+          src={event.posterURL} 
+          alt={event.title} 
+          className="w-full h-full object-cover object-center"
+        />
+      </div>
 
-        <h3 className="text-3xl font-extrabold text-slate-800 mb-8 flex items-center gap-3">
-          <CheckCircle2 className="w-8 h-8 text-blue-500" />
-          Complete Registration
-        </h3>
+      <div className="w-full flex-1 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 relative z-20 -mt-32 md:-mt-48 mb-20">
 
-        <div className="space-y-8">
+        {/* 🔙 BACK */}
+        <button
+          onClick={() => navigate(-1)}
+          className="group flex items-center gap-2 mb-6 text-white hover:text-indigo-200 font-semibold transition-colors bg-black/30 backdrop-blur-md px-5 py-2.5 rounded-full shadow-lg border border-white/20 w-max"
+        >
+          <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
+          Back to Events
+        </button>
 
-          {/* FREE EVENT */}
-          {event.eventType === "free" && (
-            <button 
-              onClick={handleFreeRegistration}
-              disabled={isRegistered}
-              className={`w-full sm:w-auto px-10 py-4 rounded-full font-bold text-lg shadow-lg transition-all duration-300 ${
-                isRegistered 
-                  ? "bg-slate-300 text-slate-500 cursor-not-allowed shadow-none" 
-                  : "bg-gradient-to-r from-emerald-500 to-teal-500 text-white hover:shadow-xl hover:scale-105"
-              }`}
-            >
-              {isRegistered ? "Registered" : "Confirm Free Registration"}
-            </button>
-          )}
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+          className="bg-white dark:bg-slate-900 rounded-[2rem] shadow-2xl border border-slate-100 dark:border-slate-800 overflow-hidden flex flex-col md:flex-row"
+        >
 
-          {/* PAID EVENT */}
-          {event.eventType === "paid" && (
-            <div className="space-y-8">
+          {/* Left/Top Content Area */}
+          <div className="flex-1 p-8 md:p-12 border-b md:border-b-0 md:border-r border-slate-100 dark:border-slate-800">
+            <h1 className="text-4xl md:text-5xl lg:text-6xl font-extrabold tracking-tight text-slate-800 dark:text-white mb-8 leading-tight">
+              {event.title}
+            </h1>
 
-              {/* Payment Info */}
-              <div className="bg-blue-50/50 rounded-3xl p-8 border border-blue-100/50">
-                <div className="flex items-center gap-3 mb-4">
-                  <QrCode className="w-6 h-6 text-purple-600" />
-                  <p className="text-lg font-bold text-slate-800">
-                    Payment Details
-                  </p>
-                </div>
-
-                <p className="text-2xl font-black bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-purple-600 mb-2">
-                  {event.upiId}
-                </p>
-
-                <p className="text-slate-600 font-medium">
-                  {event.paymentInstructions}
-                </p>
+            {/* 📅 META INFO ROW */}
+            <div className="flex flex-wrap items-center gap-3 mb-10 text-sm font-bold text-slate-700 dark:text-slate-300">
+              <div className="flex items-center gap-2 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 px-4 py-2.5 rounded-xl border border-indigo-100 dark:border-indigo-800/30">
+                <Calendar className="w-4 h-4" /> {event.date || "TBD"}
               </div>
-
-              {/* Upload */}
-              {event.requireScreenshot && (
-                <div className="border-2 border-dashed border-slate-300 rounded-3xl p-8 text-center hover:bg-slate-50 hover:border-blue-400 transition-colors cursor-pointer group relative">
-                  <input
-                    type="file"
-                    onChange={(e) =>
-                      setPaymentFile(e.target.files?.[0] || null)
-                    }
-                    className="absolute inset-0 opacity-0 cursor-pointer w-full h-full z-10"
-                  />
-
-                  <Upload className="w-10 h-10 text-slate-400 mx-auto mb-4 group-hover:text-blue-500 transition-colors" />
-
-                  <p className="text-slate-600 font-medium">
-                    Click or drag to attach payment proof
-                  </p>
-
-                  {paymentFile && (
-                    <p className="mt-3 text-green-600 font-semibold">
-                      File selected: {paymentFile.name}
-                    </p>
-                  )}
-                </div>
-              )}
-
-              {/* Submit Button */}
-              <button
-                onClick={handleSubmitPayment}
-                className="w-full bg-gradient-to-r from-orange-500 to-pink-500 text-white px-10 py-4 rounded-full font-bold text-lg shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300"
-              >
-                Submit Payment
-              </button>
-
+              <div className="flex items-center gap-2 bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 px-4 py-2.5 rounded-xl border border-purple-100 dark:border-purple-800/30">
+                <Clock className="w-4 h-4" /> {event.time || "TBD"}
+              </div>
+              <div className="flex items-center gap-2 bg-rose-50 dark:bg-rose-900/30 text-rose-700 dark:text-rose-400 px-4 py-2.5 rounded-xl border border-rose-100 dark:border-rose-800/30">
+                <MapPin className="w-4 h-4" /> {event.location || event.venue || "Campus"}
+              </div>
+               {event.eventType === "paid" && (
+                 <div className="flex items-center gap-2 bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 px-4 py-2.5 rounded-xl uppercase tracking-widest text-[10px] border border-amber-100 dark:border-amber-800/30">
+                   <Zap className="w-3 h-3" /> Paid Event
+                 </div>
+               )}
             </div>
-          )}
 
-        </div>
-      </motion.div>
-    )}
-  </div>
-</motion.div>
+            <div className="prose dark:prose-invert max-w-none">
+               <p className="text-lg text-slate-600 dark:text-slate-400 leading-relaxed font-medium whitespace-pre-wrap">
+                 {event.description}
+               </p>
+            </div>
+          </div>
+
+          {/* Right/Bottom Sticky Registration Panel */}
+          <div className="w-full md:w-[26rem] bg-slate-50 dark:bg-slate-800/50 p-8 md:p-10 flex flex-col shrink-0 relative">
+             <div className="sticky top-10 space-y-8">
+               {!showRegister ? (
+                 <div className="space-y-6">
+                   <div className="text-center space-y-2 mb-8">
+                      <p className="text-slate-500 dark:text-slate-400 font-semibold text-sm tracking-wide uppercase">Secure your spot</p>
+                      <p className="text-5xl font-black text-slate-800 dark:text-white">
+                        {event.eventType === "paid" ? "₹Paid" : "Free"}
+                      </p>
+                   </div>
+                   <button
+                     onClick={() => setShowRegister(true)}
+                     className="w-full group relative inline-flex items-center justify-center gap-3 bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 text-white px-8 py-5 rounded-2xl text-xl font-bold shadow-[0_8px_30px_rgba(79,70,229,0.3)] hover:shadow-[0_8px_30px_rgba(79,70,229,0.5)] hover:scale-[1.02] transition-all duration-300"
+                   >
+                     <Zap className="w-6 h-6 animate-pulse" />
+                     Register Now
+                   </button>
+                 </div>
+               ) : (
+                  <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                    <h3 className="text-xl font-bold text-slate-800 dark:text-white flex items-center justify-center gap-2 mb-6 border-b border-slate-200 dark:border-slate-700 pb-4">
+                      <CheckCircle2 className="w-6 h-6 text-indigo-500" />
+                      Complete Registration
+                    </h3>
+
+                    {event.eventType === "free" && (
+                      <button 
+                        onClick={handleFreeRegistration}
+                        disabled={isRegistered}
+                        className={`w-full px-6 py-4 rounded-xl font-bold text-lg transition-all duration-300 ${
+                          isRegistered 
+                            ? "bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 cursor-not-allowed border border-emerald-200 dark:border-emerald-800/30" 
+                            : "bg-emerald-500 hover:bg-emerald-600 text-white shadow-[0_8px_30px_rgba(16,185,129,0.3)] hover:scale-[1.02]"
+                        }`}
+                      >
+                        {isRegistered ? "You're Registered!" : "Confirm Selection"}
+                      </button>
+                    )}
+
+                    {event.eventType === "paid" && (
+                      <div className="space-y-6">
+
+                        {/* Payment Info */}
+                        <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 shadow-sm text-center">
+                          <p className="text-sm font-bold text-slate-500 dark:text-slate-400 mb-2 uppercase tracking-widest">Pay via UPI</p>
+                          <p className="text-2xl font-black text-indigo-600 dark:text-indigo-400 mb-4 select-all">
+                            {event.upiId || "N/A"}
+                          </p>
+                          <p className="text-sm text-slate-600 dark:text-slate-400 bg-slate-50 dark:bg-slate-800 p-3 rounded-lg border border-slate-100 dark:border-slate-700">
+                            {event.paymentInstructions || "Send exact amount to the UPI ID above."}
+                          </p>
+                        </div>
+
+                        {/* Upload */}
+                        {event.requireScreenshot && (
+                          <div className="border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-2xl p-6 text-center hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer group relative bg-white dark:bg-slate-900">
+                            <input
+                              type="file"
+                              onChange={(e) =>
+                                setPaymentFile(e.target.files?.[0] || null)
+                              }
+                              className="absolute inset-0 opacity-0 cursor-pointer w-full h-full z-10"
+                            />
+
+                            <Upload className="w-8 h-8 text-slate-400 mx-auto mb-3 group-hover:text-indigo-500 transition-colors" />
+
+                            <p className="text-slate-600 dark:text-slate-400 text-sm font-medium">
+                              Upload payment screenshot
+                            </p>
+
+                            {paymentFile && (
+                              <p className="mt-3 text-emerald-600 dark:text-emerald-400 font-bold text-xs bg-emerald-50 dark:bg-emerald-900/30 p-2 rounded-md">
+                                {paymentFile.name}
+                              </p>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Submit Button */}
+                        <button
+                          onClick={handleSubmitPayment}
+                          className="w-full bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-4 rounded-xl font-bold text-lg shadow-[0_8px_30px_rgba(79,70,229,0.3)] hover:scale-[1.02] transition-all duration-300"
+                        >
+                          Submit Payment
+                        </button>
+                      </div>
+                    )}
+                  </div>
+               )}
+             </div>
+          </div>
+        </motion.div>
+      </div>
+
       {/* FULLSCREEN IMAGE MODAL */}
       <AnimatePresence>
         {showImageModal && (
@@ -414,7 +409,7 @@ await addDoc(collection(db, "registrations"), {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={() => setShowImageModal(false)}
-            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/95 p-4 backdrop-blur-md cursor-zoom-out"
+            className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/95 p-4 backdrop-blur-xl cursor-zoom-out"
           >
             <motion.img
               initial={{ scale: 0.9, y: 20 }}
@@ -422,10 +417,9 @@ await addDoc(collection(db, "registrations"), {
               exit={{ scale: 0.9, y: 20 }}
               src={event.posterURL}
               alt="Event Poster Fullscreen"
-              className="max-w-full max-h-[90vh] object-contain rounded-2xl shadow-2xl border-2 border-white/10"
-              onClick={(e) => e.stopPropagation()} // Prevent clicking image from closing it immediately
+              className="max-w-full max-h-[90vh] object-contain rounded-2xl shadow-2xl border border-white/10"
+              onClick={(e) => e.stopPropagation()}
             />
-            {/* Close instruction */}
             <p className="absolute bottom-6 text-white/50 text-sm font-semibold tracking-widest pointer-events-none">
               CLICK ANYWHERE TO CLOSE
             </p>
@@ -433,7 +427,7 @@ await addDoc(collection(db, "registrations"), {
         )}
       </AnimatePresence>
     </div>
-    </div>
   );
 };
+
 export default EventDetails;

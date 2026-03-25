@@ -1,18 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import {
-  Calendar,
-  User,
-  LogOut,
-  Clock,
-  Search,
-  Star,
-  ChevronLeft,
-  ChevronRight,
-  Award,
-  MapPin,
-  Bell,
+  Calendar, User, LogOut, Clock, Search, Star, ChevronLeft, ChevronRight,
+  Award, MapPin, Bell, LayoutDashboard, Megaphone, CheckCircle
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -83,6 +74,7 @@ const StudentHome = () => {
   const [collapsed, setCollapsed] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
   const [showAnnouncements, setShowAnnouncements] = useState(false);
+  const announcementRef = useRef<HTMLDivElement>(null);
 
   const [announcements, setAnnouncements] = useState<{id: string; title: string; message: string; createdAt: Date; readBy?: string[]}[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -98,7 +90,7 @@ const [flippedId, setFlippedId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
 
   const [activeTab, setActiveTab] =
-    useState<"events" | "today" | "profile" | "certificates">("events");
+    useState<"dashboard" | "events" | "today" | "announcements" | "profile">("dashboard");
 
   const [certificates, setCertificates] = useState<CertificateItem[]>([]);
   const [myRegistrations, setMyRegistrations] = useState<{eventId?: string}[]>([]);
@@ -168,14 +160,14 @@ const [flippedId, setFlippedId] = useState<string | null>(null);
 
   /* ---------------- LOAD ANNOUNCEMENTS ---------------- */
   useEffect(() => {
+    const today = new Date().toISOString().split("T")[0];
     const q = query(
       collection(db, "announcements"),
-      orderBy("createdAt", "desc"),
-      limit(10)
+      where("expiryDate", ">=", today)
     );
 
     const unsubscribe = onSnapshot(q, (snap) => {
-      const list = snap.docs.map(d => ({
+      let list = snap.docs.map(d => ({
         id: d.id,
         title: d.data().title || "",
         message: d.data().message || "",
@@ -184,6 +176,7 @@ const [flippedId, setFlippedId] = useState<string | null>(null);
         ...d.data(),
       })) as {id: string; title: string; message: string; createdAt: Date; readBy?: string[]}[];
       
+      list.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
       setAnnouncements(list);
       
       // We calculate unreadCount here, but what if auth.currentUser is not yet populated?
@@ -218,6 +211,18 @@ const [flippedId, setFlippedId] = useState<string | null>(null);
       }
     }
   };
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (announcementRef.current && !announcementRef.current.contains(event.target as Node)) {
+        setShowAnnouncements(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
 
   /* ---------------- LOAD PROFILE ---------------- */
 
@@ -361,30 +366,28 @@ const [flippedId, setFlippedId] = useState<string | null>(null);
   /* ---------------- UI ---------------- */
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 flex font-sans">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex font-sans text-slate-900 dark:text-slate-100 transition-colors duration-300">
 
       {/* SIDEBAR */}
-
       <aside
         className={`hidden lg:flex ${
           collapsed ? "w-20" : "w-72"
-        } bg-gradient-to-b from-slate-900 via-indigo-950 to-purple-950 flex-col fixed inset-y-0 left-0 z-40 transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] shadow-2xl border-r border-white/10`}
+        } bg-white dark:bg-slate-900 flex-col fixed inset-y-0 left-0 z-40 transition-all duration-300 ease-in-out shadow-[4px_0_24px_rgba(0,0,0,0.02)] dark:shadow-[4px_0_24px_rgba(0,0,0,0.2)] border-r border-slate-100 dark:border-slate-800`}
       >
-
         <button
           onClick={() => setCollapsed(!collapsed)}
-          className="absolute -right-3.5 top-7 bg-white/10 backdrop-blur-md border border-white/20 text-white hover:bg-white/20 p-1.5 rounded-full shadow-lg transition-all z-50 hover:scale-110"
+          className="absolute -right-3.5 top-7 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-500 hover:text-indigo-600 p-1.5 rounded-full shadow-md transition-all z-50 hover:scale-110"
         >
           {collapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
         </button>
 
-        <div className="p-6 h-20 flex items-center border-b border-white/10">
+        <div className="p-6 h-20 flex items-center border-b border-slate-100 dark:border-slate-800">
           <div className="flex items-center gap-3 w-full">
-            <div className="bg-gradient-to-br from-blue-500 to-purple-500 text-white shadow-glow p-2.5 rounded-xl">
+            <div className="bg-gradient-to-br from-indigo-500 to-blue-600 text-white shadow-lg p-2.5 rounded-xl">
               <Calendar className="h-5 w-5" />
             </div>
             {!collapsed && (
-              <span className="font-display text-2xl tracking-tight font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-100 to-purple-100">
+              <span className="font-display text-2xl tracking-tight font-extrabold text-slate-800 dark:text-white">
                 Tharang
               </span>
             )}
@@ -392,57 +395,29 @@ const [flippedId, setFlippedId] = useState<string | null>(null);
         </div>
 
         <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto w-full styled-scrollbar">
-
-          <button
-            onClick={() => setActiveTab("events")}
-            className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-semibold transition-all duration-300 ${
-              activeTab === "events"
-                ? "bg-white/10 text-white shadow-[0_0_15px_rgba(255,255,255,0.1)] border border-white/10"
-                : "text-slate-400 hover:bg-white/5 hover:text-white"
-            }`}
-          >
-            <Star className={`h-5 w-5 ${activeTab === "events" ? "text-blue-400" : ""}`} />
-            {!collapsed && <span>Upcoming Events</span>}
-          </button>
-
-          <button
-            onClick={() => setActiveTab("today")}
-            className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-semibold transition-all duration-300 ${
-              activeTab === "today"
-                ? "bg-white/10 text-white shadow-[0_0_15px_rgba(255,255,255,0.1)] border border-white/10"
-                : "text-slate-400 hover:bg-white/5 hover:text-white"
-            }`}
-          >
-            <Clock className={`h-5 w-5 ${activeTab === "today" ? "text-purple-400" : ""}`} />
-            {!collapsed && <span>What's Today</span>}
-          </button>
-
-          <button
-            onClick={() => setActiveTab("profile")}
-            className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-semibold transition-all duration-300 ${
-              activeTab === "profile"
-                ? "bg-white/10 text-white shadow-[0_0_15px_rgba(255,255,255,0.1)] border border-white/10"
-                : "text-slate-400 hover:bg-white/5 hover:text-white"
-            }`}
-          >
-            <User className={`h-5 w-5 ${activeTab === "profile" ? "text-pink-400" : ""}`} />
-            {!collapsed && <span>My Profile</span>}
-          </button>
-
-          <button
-            onClick={() => setActiveTab("certificates")}
-            className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-semibold transition-all duration-300 ${
-              activeTab === "certificates"
-                ? "bg-white/10 text-white shadow-[0_0_15px_rgba(255,255,255,0.1)] border border-white/10"
-                : "text-slate-400 hover:bg-white/5 hover:text-white"
-            }`}
-          >
-            <Award className={`h-5 w-5 ${activeTab === "certificates" ? "text-emerald-400" : ""}`} />
-            {!collapsed && <span>My Certificates</span>}
-          </button>
+          {[
+            { id: "dashboard", icon: LayoutDashboard, label: "Dashboard", color: "text-blue-500" },
+            { id: "events", icon: Star, label: "Events", color: "text-indigo-500" },
+            { id: "today", icon: Clock, label: "What's Today", color: "text-amber-500" },
+            { id: "announcements", icon: Megaphone, label: "Announcements", color: "text-rose-500" },
+            { id: "profile", icon: User, label: "Profile", color: "text-emerald-500" },
+          ].map((item) => (
+            <button
+              key={item.id}
+              onClick={() => setActiveTab(item.id as any)}
+              className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-semibold transition-all duration-300 ${
+                activeTab === item.id
+                  ? "bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 shadow-sm border border-indigo-100 dark:border-indigo-500/20"
+                  : "text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-white"
+              }`}
+            >
+              <item.icon className={`h-5 w-5 ${activeTab === item.id ? item.color : ""}`} />
+              {!collapsed && <span>{item.label}</span>}
+            </button>
+          ))}
 
           {!collapsed && (
-            <div className="pt-8 pb-3 text-[10px] font-bold text-slate-500 uppercase tracking-widest px-3">
+            <div className="pt-8 pb-3 text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest px-3">
               Clubs
             </div>
           )}
@@ -450,21 +425,19 @@ const [flippedId, setFlippedId] = useState<string | null>(null);
           {clubs.map((club) => (
             <button
               key={club.name}
-              onClick={() =>
-             navigate(`/student/club/${club.id}`)
-              }
-              className="w-full flex items-center gap-3 px-3 py-2 text-sm font-semibold text-slate-400 hover:bg-white/5 hover:text-white transition-all duration-200 rounded-xl group"
+              onClick={() => navigate(`/student/club/${club.id}`)}
+              className="w-full flex items-center gap-3 px-3 py-2 text-sm font-semibold text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-white transition-all duration-200 rounded-xl group"
             >
-              <span className="text-base group-hover:scale-125 transition-transform duration-300 drop-shadow-md">{club.emoji}</span>
+              <span className="text-base group-hover:scale-125 transition-transform duration-300 drop-shadow-sm">{club.emoji}</span>
               {!collapsed && <span>{club.name}</span>}
             </button>
           ))}
         </nav>
 
-        <div className="p-4 border-t border-white/10">
+        <div className="p-4 border-t border-slate-100 dark:border-slate-800">
           <button
-            onClick={() => navigate("/")}
-            className="w-full flex items-center gap-3 px-3 py-3 text-sm font-semibold text-slate-400 hover:bg-pink-500/10 hover:text-pink-400 rounded-xl transition-colors duration-200"
+            onClick={async () => { await auth.signOut(); navigate("/"); }}
+            className="w-full flex items-center gap-3 px-3 py-3 text-sm font-semibold text-slate-500 dark:text-slate-400 hover:bg-rose-50 dark:hover:bg-rose-500/10 hover:text-rose-600 dark:hover:text-rose-400 rounded-xl transition-colors duration-200"
           >
             <LogOut className="h-5 w-5" />
             {!collapsed && <span>Sign Out</span>}
@@ -472,564 +445,413 @@ const [flippedId, setFlippedId] = useState<string | null>(null);
         </div>
       </aside>
 
-      {/* MAIN */}
-
-      <main
-        className={`flex-1 ${
-          collapsed ? "lg:ml-20" : "lg:ml-72"
-        } transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] relative z-10`}
-      >
-
-        <header className="sticky top-0 z-30 bg-white/40 backdrop-blur-xl border-b border-white/20 px-8 py-5 flex items-center justify-between shadow-sm">
-
-          <h1 className="font-display text-3xl tracking-tight font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-slate-800 to-slate-600">
-            {activeTab === "events" && "Upcoming Events"}
-            {activeTab === "today" && "What's Happening Today"}
-            {activeTab === "profile" && "My Profile"}
-            {activeTab === "certificates" && "My Certificates"}
-          </h1>
+      {/* MAIN CONTENT */}
+      <main className={`flex-1 ${collapsed ? "lg:ml-20" : "lg:ml-72"} transition-all duration-300 relative z-10 flex flex-col min-h-screen`}>
+        
+        {/* HEADER */}
+        <header className="sticky top-0 z-30 bg-white/70 dark:bg-slate-900/70 backdrop-blur-xl border-b border-slate-200/50 dark:border-slate-800/50 px-8 py-5 flex items-center justify-between shadow-sm">
+          <div className="flex flex-col">
+            <h1 className="font-display text-2xl md:text-3xl tracking-tight font-extrabold text-slate-800 dark:text-white capitalize drop-shadow-sm">
+              {activeTab === "dashboard" && `Welcome, ${name ? name.split(" ")[0] : "Student"}`}
+              {activeTab !== "dashboard" && activeTab}
+            </h1>
+            <p className="text-slate-500 dark:text-slate-400 text-sm font-medium mt-1">
+              {activeTab === "dashboard" && "Overview and quick access"}
+              {activeTab === "events" && "Discover and track campus events"}
+              {activeTab === "today" && "Your daily campus planner"}
+              {activeTab === "announcements" && "Latest updates and notices"}
+              {activeTab === "profile" && "Manage your academic persona"}
+            </p>
+          </div>
 
           <div className="flex items-center gap-4">
-            {activeTab === "events" && (
-              <div className="relative hidden sm:block group">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 group-focus-within:text-blue-500 transition-colors" />
-                <Input
-                  placeholder="Search events..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-11 w-72 rounded-full bg-white/60 backdrop-blur-md border border-white/40 focus-visible:bg-white focus-visible:ring-2 focus-visible:ring-blue-500/50 shadow-[0_4px_15px_rgba(0,0,0,0.03)] transition-all duration-300 h-11 font-medium text-slate-700 placeholder:text-slate-400"
-                />
-              </div>
-            )}
-            {/* ANNOTATIONS / BELL ICON */}
-            <div className="relative">
-              <button
-                className="flex items-center justify-center shrink-0 outline-none rounded-full ring-offset-2 focus-visible:ring-2 focus-visible:ring-blue-500 hover:scale-105 transition-all text-slate-500 hover:text-blue-500 p-2"
-                onClick={handleOpenAnnouncements}
-              >
+            <div className="relative" ref={announcementRef}>
+              <button className="flex items-center justify-center shrink-0 rounded-full hover:scale-105 transition-all text-slate-500 dark:text-slate-400 hover:text-blue-500 p-2" onClick={handleOpenAnnouncements}>
                 <Bell className="w-6 h-6" />
                 {unreadCount > 0 && (
-                  <span className="absolute top-1 right-1 bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full border-2 border-white shadow-sm leading-none min-w-[18px] text-center flex items-center justify-center">
+                  <span className="absolute top-1 right-1 bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full border-2 border-white dark:border-slate-900 shadow-sm leading-none flex items-center justify-center min-w-[18px]">
                     {unreadCount > 9 ? "9+" : unreadCount}
                   </span>
                 )}
               </button>
-
+              
               <AnimatePresence>
                 {showAnnouncements && (
                   <motion.div
                     initial={{ opacity: 0, scale: 0.95, y: 10 }}
                     animate={{ opacity: 1, scale: 1, y: 0 }}
                     exit={{ opacity: 0, scale: 0.95, y: 10 }}
-                    transition={{ duration: 0.15 }}
-                    className="absolute right-0 mt-3 bg-white shadow-2xl rounded-2xl p-4 w-80 sm:w-96 border border-slate-100 z-50 origin-top-right flex flex-col gap-3 max-h-[80vh] overflow-y-auto styled-scrollbar"
+                    className="absolute right-0 mt-3 bg-white dark:bg-slate-800 shadow-2xl rounded-2xl p-4 w-80 sm:w-96 border border-slate-100 dark:border-slate-700 z-50 flex flex-col gap-3 max-h-[80vh] overflow-y-auto"
                   >
                     <div className="flex items-center justify-between mb-1">
-                      <h3 className="font-extrabold text-slate-800 text-lg">Announcements</h3>
-                      {unreadCount > 0 && (
-                        <span className="bg-blue-100 text-blue-700 text-xs font-bold px-2 py-1 rounded-full">
-                          {unreadCount} New
-                        </span>
-                      )}
+                      <h3 className="font-extrabold text-slate-800 dark:text-white text-lg">Quick Notices</h3>
+                      <button onClick={() => { setActiveTab("announcements"); setShowAnnouncements(false); }} className="text-xs text-blue-500 font-bold hover:underline">View All</button>
                     </div>
-                    
-                    <div className="h-px bg-slate-100 w-full" />
-                    
-                    {announcements.length === 0 ? (
-                      <div className="text-center py-8 text-slate-400">
-                        <Bell className="w-8 h-8 mx-auto mb-2 opacity-20" />
-                        <p className="text-sm font-medium">No announcements yet</p>
-                      </div>
-                    ) : (
-                      <div className="flex flex-col gap-3">
-                        {announcements.map((ann) => {
-                          const isUnread = !(ann.readBy || []).includes(auth.currentUser?.uid || "");
-                          return (
-                            <div 
-                              key={ann.id} 
-                              className={`p-3 rounded-xl border transition-colors ${
-                                isUnread 
-                                  ? "bg-blue-50 border-blue-100 shadow-sm" 
-                                  : "bg-white border-slate-100 hover:bg-slate-50"
-                              }`}
-                            >
-                              <div className="flex items-start justify-between gap-2 mb-1">
-                                <h4 className={`font-bold text-sm ${isUnread ? "text-blue-900" : "text-slate-800"}`}>
-                                  {ann.title}
-                                </h4>
-                                <span className="text-[10px] text-slate-400 font-medium whitespace-nowrap shrink-0 mt-0.5">
-                                  {ann.createdAt instanceof Date 
-                                    ? ann.createdAt.toLocaleDateString(undefined, { month: 'short', day: 'numeric'}) 
-                                    : "Now"}
-                                </span>
-                              </div>
-                              <p className={`text-xs ${isUnread ? "text-blue-700/80" : "text-slate-500"} line-clamp-3 leading-relaxed`}>
-                                {ann.message}
-                              </p>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
+                    {announcements.slice(0, 3).map((ann) => {
+                       const isUnread = !(ann.readBy || []).includes(auth.currentUser?.uid || "");
+                       return (
+                         <div key={ann.id} className={`p-3 rounded-lg shadow-sm border-l-4 ${isUnread ? "bg-blue-50 dark:bg-blue-900/20 border-blue-500" : "bg-slate-50 dark:bg-slate-800/80 border-slate-300 dark:border-slate-600"}`}>
+                           <h4 className={`font-bold text-sm ${isUnread ? "text-blue-900 dark:text-blue-200" : "text-slate-700 dark:text-slate-300"}`}>{ann.title}</h4>
+                           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 line-clamp-2">{ann.message}</p>
+                         </div>
+                       )
+                    })}
                   </motion.div>
                 )}
               </AnimatePresence>
             </div>
-            
-            <div className="relative">
-              <button 
-                className="flex items-center justify-center shrink-0 outline-none rounded-full ring-offset-2 focus-visible:ring-2 focus-visible:ring-blue-500 hover:scale-105 transition-all"
-                onClick={() => setShowDropdown(!showDropdown)}
-              >
-                {photoURL ? (
-                  <img src={photoURL} className="w-10 h-10 rounded-full object-cover border border-slate-200 shadow-sm" alt="Profile" />
-                ) : (
-                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 text-white flex items-center justify-center font-bold text-lg shadow-sm">
-                    {name ? name.charAt(0).toUpperCase() : "U"}
-                  </div>
-                )}
-              </button>
-              
-              <AnimatePresence>
-                {showDropdown && (
-                  <motion.div 
-                    initial={{ opacity: 0, scale: 0.95, y: 10 }}
-                    animate={{ opacity: 1, scale: 1, y: 0 }}
-                    exit={{ opacity: 0, scale: 0.95, y: 10 }}
-                    transition={{ duration: 0.15 }}
-                    className="absolute right-0 mt-3 bg-white shadow-2xl rounded-2xl p-4 min-w-[220px] border border-slate-100 z-50 origin-top-right flex flex-col gap-1"
-                  >
-                    <p className="font-extrabold text-slate-800 text-base">{name || "Student Name"}</p>
-                    <p className="text-sm font-medium text-slate-500 truncate">{auth.currentUser?.email || "student@example.com"}</p>
-                    
-                    <div className="h-px bg-slate-100 my-2 w-full" />
-                    
-                    <button 
-                      onClick={async () => {
-                        await auth.signOut();
-                        navigate("/");
-                      }}
-                      className="text-left py-2 px-3 text-sm font-bold text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                    >
-                      Sign Out
-                    </button>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
+
+            <button onClick={() => setActiveTab("profile")} className="flex items-center justify-center shrink-0 rounded-full hover:scale-105 transition-all outline-none">
+               {photoURL ? (
+                 <img src={photoURL} className="w-10 h-10 rounded-full object-cover shadow-sm border border-slate-200 dark:border-slate-700" alt="Avatar" />
+               ) : (
+                 <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-blue-600 text-white flex items-center justify-center font-bold text-lg shadow-sm">
+                   {name ? name.charAt(0).toUpperCase() : "U"}
+                 </div>
+               )}
+            </button>
           </div>
         </header>
 
 
 
-        {/* TODAY */}
-
-        <div className="p-4 sm:p-8">
-          {activeTab === "today" && (
-            <div className="space-y-6">
-              {filteredEvents.length === 0 ? (
-                <div className="py-20 text-center text-slate-500 font-medium bg-white/50 backdrop-blur-md rounded-[2.5rem] border border-white/60">
-                  <Clock className="w-16 h-16 mx-auto mb-4 text-purple-300" />
-                  <p className="text-xl">No events today</p>
-                </div>
-              ) : (
-                filteredEvents.map((event) => (
-                  <motion.div 
-                    key={event.id}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="bg-white/80 backdrop-blur-xl p-8 rounded-3xl shadow-lg border border-white/60 flex flex-col gap-6"
-                  >
-                     <div>
-                       <h3 className="text-3xl font-extrabold text-slate-800 mb-2">{event.title}</h3>
-                       <div className="flex flex-wrap gap-4 text-sm font-semibold text-slate-500">
-                         <span className="flex items-center gap-1.5"><Calendar className="w-4 h-4" /> {event.date}</span>
-                         <span className="flex items-center gap-1.5"><Clock className="w-4 h-4" /> {event.time}</span>
-                         <span className="flex items-center gap-1.5"><MapPin className="w-4 h-4" /> {event.location || (event as any).venue || "Campus"}</span>
-                       </div>
-                     </div>
-                     <p className="text-slate-600 font-medium leading-relaxed">
-                       {event.description || "No description provided."}
-                     </p>
-                     <div>
-                       <button 
-                         onClick={() => navigate(`/student/event/${event.id}`)}
-                         className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-8 py-3 rounded-full font-bold shadow-lg hover:shadow-xl hover:scale-105 transition-all"
-                       >
-                         Register
-                       </button>
-                     </div>
-                  </motion.div>
-                ))
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* PROFILE */}
-
-        {activeTab === "profile" && (
-          <motion.div 
-            initial={{ opacity: 0, y: 15 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-            className="p-8 max-w-4xl space-y-8"
-          >
-
-            <div className="bg-white rounded-xl shadow-md p-8 relative overflow-hidden">
-              
-              <div className="flex flex-col-reverse sm:flex-row items-start justify-between gap-10 relative z-10 w-full mb-8">
-                <div className="flex-1 w-full space-y-1">
-                  <h3 className="text-2xl font-bold text-slate-800">My Profile</h3>
-                  <p className="text-slate-500 text-sm">Manage your personal details and certificates information.</p>
-                </div>
-                
-                <div className="relative group/avatar cursor-pointer shrink-0">
-                  <div className="h-16 w-16 sm:h-20 sm:w-20 rounded-full overflow-hidden bg-gradient-to-br from-blue-100 to-purple-100 flex items-center justify-center border-2 border-white shadow-md transition-all duration-300 ring-2 ring-slate-100">
-                    {photoURL ? (
-                      <img
-                        src={photoURL}
-                        alt="Profile"
-                        className="h-full w-full object-cover"
-                      />
-                    ) : (
-                      <div className="w-full h-full bg-blue-500 text-white flex items-center justify-center font-bold text-2xl tracking-widest">
-                        {name ? name.charAt(0).toUpperCase() : "NA"}
-                      </div>
-                    )}
-                  </div>
-                  {isEditing && (
-                    <div className="absolute inset-0 bg-black/50 rounded-full opacity-0 group-hover/avatar:opacity-100 flex items-center justify-center transition-opacity duration-200">
-                      <span className="text-white text-[10px] font-bold tracking-wide">Edit</span>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={handleImageUpload}
-                        className="absolute inset-0 opacity-0 cursor-pointer"
-                      />
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <div className="w-full relative z-10">
-                {isEditing ? (
-                  <div className="space-y-6">
-                    <div className="bg-amber-50 border-l-4 border-amber-500 p-4 rounded-r-lg">
-                      <div className="flex gap-3 items-center">
-                        <span className="text-amber-500 text-xl">⚠️</span>
-                        <p className="text-amber-800 text-sm font-bold">
-                          Please enter your FULL NAME correctly. Certificates will be issued based on this name.
-                        </p>
-                      </div>
-                    </div>
-                    
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                      <div className="space-y-2">
-                        <label className="text-sm font-semibold text-slate-600">Full Name</label>
-                        <Input
-                          placeholder="Full Name"
-                          value={name}
-                          onChange={(e) => setName(e.target.value)}
-                          className="bg-slate-50 border-slate-200 focus-visible:bg-white focus-visible:ring-2 focus-visible:ring-blue-500 rounded-lg shadow-sm font-medium"
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <label className="text-sm font-semibold text-slate-600">Register Number</label>
-                        <Input
-                          placeholder="Register Number"
-                          value={registerNumber}
-                          onChange={(e) => setRegisterNumber(e.target.value)}
-                          className="bg-slate-50 border-slate-200 focus-visible:bg-white focus-visible:ring-2 focus-visible:ring-blue-500 rounded-lg shadow-sm font-medium"
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <label className="text-sm font-semibold text-slate-600">Phone Number</label>
-                        <Input
-                          placeholder="Phone Number"
-                          value={phone}
-                          onChange={(e) => setPhone(e.target.value)}
-                          className="bg-slate-50 border-slate-200 focus-visible:bg-white focus-visible:ring-2 focus-visible:ring-blue-500 rounded-lg shadow-sm font-medium"
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <label className="text-sm font-semibold text-slate-600">Branch</label>
-                        <Input
-                          placeholder="Branch"
-                          value={branch}
-                          onChange={(e) => setBranch(e.target.value)}
-                          className="bg-slate-50 border-slate-200 focus-visible:bg-white focus-visible:ring-2 focus-visible:ring-blue-500 rounded-lg shadow-sm font-medium"
-                        />
-                      </div>
-
-                      <div className="space-y-2 sm:col-span-2">
-                        <label className="text-sm font-semibold text-slate-600">Year</label>
-                        <Input
-                          placeholder="Year"
-                          value={year}
-                          onChange={(e) => setYear(e.target.value)}
-                          className="bg-slate-50 border-slate-200 focus-visible:bg-white focus-visible:ring-2 focus-visible:ring-blue-500 rounded-lg shadow-sm font-medium"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 bg-slate-50 p-6 rounded-lg border border-slate-100">
-                    <div>
-                      <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Full Name</p>
-                      <p className="text-lg font-semibold text-slate-800">{name || "Not specified"}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Register Number</p>
-                      <p className="text-lg font-semibold text-slate-800">{registerNumber || "Not specified"}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Phone Number</p>
-                      <p className="text-lg font-semibold text-slate-800">{phone || "Not specified"}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Branch</p>
-                      <p className="text-lg font-semibold text-slate-800">{branch || "Not specified"}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Year</p>
-                      <p className="text-lg font-semibold text-slate-800">{year || "Not specified"}</p>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              <div className="mt-8 flex justify-end border-t border-slate-100 pt-6 relative z-10">
-                <Button
-                  onClick={() =>
-                    isEditing ? handleSave() : setIsEditing(true)
-                  }
-                  className="rounded-full px-8 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-bold text-sm hover:scale-105 shadow-md hover:shadow-lg transition-all duration-300 border-0"
-                >
-                  {isEditing ? "Save Changes" : "Edit Profile"}
-                </Button>
-              </div>
-
-              {/* 🔥 MY REGISTERED EVENTS SECTION */}
-              <div className="mt-12 pt-8 border-t border-slate-200 relative z-10">
-                <h3 className="text-xl font-bold text-slate-800 mb-6 flex items-center gap-2">
-                  <Star className="w-6 h-6 text-blue-500" />
-                  My Registered Events
-                </h3>
-                
-                {myRegistrations.length === 0 ? (
-                  <div className="bg-slate-50 border border-slate-200 rounded-xl p-8 text-center">
-                    <p className="text-slate-500 font-medium">You haven't registered for any events yet.</p>
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {myRegistrations.map((reg, idx) => {
-                      const associatedEvent = events.find(e => e.id === reg.eventId);
-                      if (!associatedEvent) return null;
-                      return (
-                        <div key={idx} className="bg-white border border-slate-200 hover:border-blue-300 rounded-xl p-5 shadow-sm hover:shadow-md transition-all flex flex-col gap-2 relative overflow-hidden group">
-                          <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-blue-400 to-purple-500 transform scale-y-0 group-hover:scale-y-100 transition-transform origin-top z-0" />
-                          <div className="relative z-10">
-                            <h4 className="font-bold text-slate-800 text-lg group-hover:text-blue-700 transition-colors">
-                              {associatedEvent.title}
-                            </h4>
-                            <div className="flex items-center gap-3 mt-2 text-sm text-slate-500 font-medium">
-                              <span className="flex items-center gap-1.5 bg-slate-50 px-2 py-1 rounded-md border border-slate-100">
-                                <Calendar className="w-3.5 h-3.5 text-purple-500" /> 
-                                {associatedEvent.date || "TBD"}
-                              </span>
-                              {associatedEvent.time && (
-                                <span className="flex items-center gap-1.5 bg-slate-50 px-2 py-1 rounded-md border border-slate-100">
-                                  <Clock className="w-3.5 h-3.5 text-pink-500" /> 
-                                  {associatedEvent.time}
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-
-            </div>
-          </motion.div>
-        )}
-
-        {/* EVENTS */}
-
-        <div className="p-4 sm:p-8">
-
-          {activeTab === "events" && (
+        {/* PAGE CONTENT WRAPPER */}
+        <div className="p-6 md:p-8 flex-1 w-full max-w-7xl mx-auto space-y-8 animate-in fade-in duration-500">
+          
+          {/* 1. DASHBOARD OVERVIEW */}
+          {activeTab === "dashboard" && (
             <div className="space-y-8">
-              {tomorrowEvents.length > 0 && (
-                <div className="mb-2">
-                  <h2 className="text-xl font-bold text-slate-800 mb-4 flex items-center gap-2">
-                    <Star className="w-6 h-6 text-amber-500" />
-                    Registered Upcoming Events Notifications
-                  </h2>
-                  <div className="flex flex-col gap-4">
-                    {tomorrowEvents.map((event) => (
-                      <motion.div 
-                        key={`notification-${event.id}`}
-                        initial={{ opacity: 0, y: -10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="bg-gradient-to-r from-amber-500 to-orange-500 text-white px-6 py-5 rounded-2xl shadow-lg border-2 border-orange-300 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
-                      >
-                        <div className="space-y-1">
-                          <h4 className="font-extrabold text-xl flex items-center gap-2 drop-shadow-sm">
-                            ⚠️ {event.title}
-                          </h4>
-                          <p className="text-sm font-semibold opacity-95">
-                            Starts in less than 24 hours!
-                          </p>
+              {/* Stat Cards */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 p-6 flex flex-col justify-center gap-4 hover:shadow-md hover:scale-[1.02] transition-all">
+                  <div className="w-12 h-12 rounded-xl bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 flex items-center justify-center">
+                    <Star className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h4 className="text-3xl font-extrabold text-slate-800 dark:text-white">{myRegistrations.length}</h4>
+                    <p className="text-sm font-semibold text-slate-500 dark:text-slate-400">Registered Events</p>
+                  </div>
+                </div>
+                <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 p-6 flex flex-col justify-center gap-4 hover:shadow-md hover:scale-[1.02] transition-all">
+                  <div className="w-12 h-12 rounded-xl bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
+                    <Calendar className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h4 className="text-3xl font-extrabold text-slate-800 dark:text-white">{events.length}</h4>
+                    <p className="text-sm font-semibold text-slate-500 dark:text-slate-400">Total Upcoming Events</p>
+                  </div>
+                </div>
+                <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 p-6 flex flex-col justify-center gap-4 hover:shadow-md hover:scale-[1.02] transition-all">
+                  <div className="w-12 h-12 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+                    <Award className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h4 className="text-3xl font-extrabold text-slate-800 dark:text-white">{certificates.length}</h4>
+                    <p className="text-sm font-semibold text-slate-500 dark:text-slate-400">Certificates Earned</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Upcoming Events Horizontal Carousel */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xl font-bold text-slate-800 dark:text-white">Upcoming Events</h3>
+                  <button onClick={() => setActiveTab("events")} className="text-sm text-blue-600 dark:text-blue-400 font-bold hover:underline">View All</button>
+                </div>
+                
+                {filteredEvents.length === 0 ? (
+                   <div className="w-full bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-2xl p-10 text-center flex flex-col items-center">
+                     <Calendar className="w-12 h-12 text-slate-300 dark:text-slate-600 mb-4" />
+                     <p className="text-lg font-bold text-slate-500 dark:text-slate-400">No events found.</p>
+                   </div>
+                ) : (
+                  <div className="flex overflow-x-auto gap-6 snap-x pb-4 styled-scrollbar px-1">
+                    {filteredEvents.slice(0, 5).map((event) => (
+                      <div key={event.id} onClick={() => navigate(`/student/event/${event.id}`)} className="cursor-pointer snap-start shrink-0 w-72 md:w-80 bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 overflow-hidden hover:shadow-xl hover:-translate-y-1 transition-all duration-300 flex flex-col">
+                        <div className="bg-gradient-to-r from-indigo-500 to-blue-500 h-24 p-5 flex items-end relative overflow-hidden">
+                           <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-2xl -mr-10 -mt-10" />
+                           <h4 className="text-white font-bold text-lg leading-tight line-clamp-2 drop-shadow-sm">{event.title}</h4>
                         </div>
-                        <div className="flex flex-wrap items-center gap-3 text-sm font-bold bg-black/10 px-4 py-2 rounded-xl backdrop-blur-sm">
-                          <span className="flex items-center gap-1.5">
-                            <Calendar className="w-4 h-4" /> {event.date}
-                          </span>
-                          <span className="flex items-center gap-1.5">
-                            <Clock className="w-4 h-4" /> {event.time}
-                          </span>
-                          <span className="flex items-center gap-1.5">
-                            <User className="w-4 h-4" /> {event.location || (event as any).venue || "Campus"}
-                          </span>
+                        <div className="p-5 flex-1 flex flex-col justify-between gap-4">
+                           <div className="space-y-2">
+                             <span className="inline-flex items-center gap-1.5 text-xs font-bold text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/30 px-2 py-1 rounded-md mb-1">{event.club || "Campus Event"}</span>
+                             <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400 font-medium">
+                               <Calendar className="w-4 h-4 text-indigo-500" /> {event.date || "TBD"}
+                             </div>
+                             <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400 font-medium">
+                               <MapPin className="w-4 h-4 text-rose-500" /> {event.location || (event as any).venue || "Venue TBD"}
+                             </div>
+                           </div>
                         </div>
-                      </motion.div>
+                      </div>
                     ))}
                   </div>
+                )}
+              </div>
+
+              {/* Registered Approaching Events Panel */}
+              {tomorrowEvents.length > 0 && (
+                <div className="bg-gradient-to-r from-amber-500 to-orange-500 rounded-2xl p-6 shadow-lg border border-orange-400/50 text-white flex flex-col md:flex-row items-center justify-between gap-6">
+                   <div>
+                     <h3 className="text-2xl font-black drop-shadow-sm flex items-center gap-2">⚠️ Approaching Event <span className="animate-pulse">●</span></h3>
+                     <p className="font-semibold text-orange-50 mt-1">You have events starting in less than 24 hours!</p>
+                   </div>
+                   <button onClick={() => setActiveTab("today")} className="bg-white/20 hover:bg-white/30 backdrop-blur-md px-6 py-2.5 rounded-full font-bold transition-colors">
+                     View Schedule
+                   </button>
                 </div>
               )}
-              
-              <motion.div 
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8 perspective-1000"
-              >
-
-              {filteredEvents.map((event, i) => (
-                <motion.div
-                  key={event.id}
-                  onClick={() =>
-                    navigate(`/student/event/${event.id}`)
-                  }
-                  initial={{ opacity: 0, y: 40, scale: 0.95 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  whileHover={{ y: -8 }}
-                  transition={{ delay: i * 0.05, type: "spring", stiffness: 300, damping: 25 }}
-                  className="group bg-white/70 backdrop-blur-xl rounded-[2.5rem] p-8 border border-white/60 shadow-xl hover:shadow-2xl hover:[transform:rotateX(2deg)_rotateY(2deg)_scale(1.03)] flex flex-col justify-between gap-10 cursor-pointer transition-all duration-300 ease-out relative overflow-hidden"
-                >
-                  
-                  {/* Subtle gradient inner glow on hover */}
-                  <div className="absolute inset-0 bg-gradient-to-br from-blue-400/10 via-purple-400/10 to-pink-400/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
-                  {/* Gradient top border fake highlight */}
-                  <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-400 via-purple-500 to-pink-500 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-
-                  <div className="space-y-4 relative z-10">
-                    <h3 className="text-3xl font-extrabold tracking-tight leading-tight text-slate-800 group-hover:text-transparent group-hover:bg-clip-text group-hover:bg-gradient-to-r group-hover:from-blue-600 group-hover:to-purple-600 transition-all duration-300">{event.title}</h3>
-                    
-                    <div className="flex flex-wrap items-center gap-3 text-sm font-semibold text-slate-500">
-                      {event.club && (
-                        <span className="bg-gradient-to-r from-blue-100 to-blue-200 text-blue-700 px-4 py-1.5 rounded-full text-xs font-bold shadow-sm">
-                          {event.club}
-                        </span>
-                      )}
-                      {event.date && (
-                        <span className="flex items-center gap-1.5 bg-white/80 border border-white px-4 py-1.5 rounded-full text-xs shadow-sm">
-                          <Calendar className="w-3.5 h-3.5 text-purple-500" /> 
-                          {event.date}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  
-                  <div className="relative z-10 w-full mt-auto" onClick={(e) => e.stopPropagation()}>
-                    <button
-                      onClick={() => setFlippedId(flippedId === event.id ? null : event.id)}
-                      className="w-full relative h-[3.25rem] perspective-1000 group/btn"
-                    >
-                      {/* Vibrant Glowing Pill Button */}
-                      <div className={`absolute inset-0 flex items-center justify-center bg-gradient-to-r from-blue-600 to-purple-600 text-white text-[15px] font-bold rounded-full shadow-glow group-hover/btn:scale-105 group-hover/btn:brightness-110 group-hover/btn:shadow-[0_8px_25px_rgba(99,102,241,0.6)] transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] ${flippedId === event.id ? "opacity-0 scale-90 pointer-events-none translate-y-3" : "opacity-100 scale-100 translate-y-0"}`}>
-                        Participants Registered
-                        {/* Pulse effect layer */}
-                        <div className="absolute inset-0 rounded-full border-2 border-white/20 animate-ping opacity-0 group-hover/btn:opacity-50" />
-                      </div>
-
-                      {/* Info state */}
-                      <div className={`absolute inset-0 flex items-center justify-center bg-white/90 backdrop-blur-md border border-slate-200 text-slate-700 text-[15px] font-bold rounded-full shadow-inner transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover/btn:scale-105 ${flippedId === event.id ? "opacity-100 scale-100 translate-y-0" : "opacity-0 scale-90 pointer-events-none -translate-y-3"}`}>
-                        <span className="flex items-center gap-2">
-                          <User className="w-4 h-4 text-purple-600" />
-                          <span className="text-purple-600 font-black">{event.registeredCount || 0}</span> Registered
-                        </span>
-                      </div>
-                    </button>         
-                  </div>
-                </motion.div>
-              ))}
-
-              </motion.div>
             </div>
           )}
 
-          {activeTab === "certificates" && (
-            <motion.div 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8 perspective-1000"
-            >
-              {certificates.length === 0 ? (
-                <div className="col-span-full py-20 text-center text-slate-500 font-medium bg-white/50 backdrop-blur-md rounded-[2.5rem] border border-white/60">
-                  <Award className="w-16 h-16 mx-auto mb-4 text-emerald-300" />
-                  <p className="text-xl">No certificates earned yet.</p>
-                  <p className="text-sm mt-2 opacity-70">Register and attend events to earn them!</p>
+          {/* 2. TODAY TAB - PLANNER */}
+          {activeTab === "today" && (
+            <div className="space-y-6">
+              <div className="bg-indigo-600 dark:bg-indigo-900 rounded-3xl p-8 text-white shadow-xl relative overflow-hidden">
+                <div className="absolute -right-20 -top-20 w-64 h-64 bg-white/10 rounded-full blur-3xl pointer-events-none" />
+                <h2 className="text-3xl font-black mb-2 flex items-center gap-3"><Clock className="w-8 h-8" /> Today's Planner</h2>
+                <p className="font-medium text-indigo-100">Your schedule for {new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}</p>
+              </div>
+
+              {filteredEvents.length === 0 ? (
+                <div className="py-20 text-center text-slate-500 dark:text-slate-400 bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm">
+                  <Clock className="w-16 h-16 mx-auto mb-4 text-slate-300 dark:text-slate-600" />
+                  <p className="text-xl font-bold">Your day is clear!</p>
+                  <p className="text-sm mt-2">No events are scheduled for today.</p>
                 </div>
               ) : (
-                certificates.map((cert, i) => (
-                  <motion.div
-                    key={cert.id}
-                    initial={{ opacity: 0, y: 40, scale: 0.95 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    transition={{ delay: i * 0.05, type: "spring", stiffness: 300, damping: 25 }}
-                    className="bg-white/70 backdrop-blur-xl rounded-[2.5rem] p-8 border border-white/60 shadow-xl hover:shadow-2xl hover:-translate-y-2 flex flex-col justify-between gap-6 overflow-hidden relative group transition-all duration-300"
-                  >
-                    <div className="absolute top-[-20%] right-[-20%] w-48 h-48 bg-gradient-to-br from-emerald-400/20 to-teal-400/20 blur-3xl rounded-full pointer-events-none group-hover:bg-emerald-400/30 transition-all duration-500" />
-                    
-                    <div className="space-y-4 relative z-10">
-                      <div className="w-14 h-14 bg-gradient-to-br from-emerald-400 to-teal-500 rounded-2xl flex items-center justify-center text-white shadow-lg mb-6 group-hover:scale-110 transition-transform duration-300">
-                        <Award className="w-7 h-7" />
-                      </div>
-                      <h3 className="text-2xl font-extrabold tracking-tight text-slate-800">
-                        {cert.eventName || events.find((e) => e.id === cert.eventId)?.title || "Event Certificate"}
-                      </h3>
-                      <p className="text-sm font-semibold text-slate-500 flex items-center gap-2">
-                        <Calendar className="w-4 h-4" /> 
-                        {cert.createdAt ? new Date(cert.createdAt.seconds * 1000).toLocaleDateString() : "Recently"}
-                      </p>
-                    </div>
-
-                    <div className="mt-6 flex items-center gap-3 w-full relative z-10">
-                      <button 
-                        onClick={() => setPreviewCert(cert.certificateURL!)}
-                        className="flex-1 bg-white/60 text-emerald-700 border border-emerald-200 py-3.5 rounded-full font-bold shadow-sm hover:bg-white hover:scale-105 transition-all duration-300"
-                      >
-                        View
-                      </button>
-                      <a 
-                        href={getDownloadUrl(cert.certificateURL)} 
-                        download
-                        className="flex-1 flex justify-center items-center gap-2 bg-gradient-to-r from-emerald-500 to-teal-500 text-white py-3.5 rounded-full font-bold shadow-lg hover:shadow-[0_8px_25px_rgba(16,185,129,0.5)] hover:scale-105 transition-all duration-300"
-                      >
-                        Download
-                      </a>
-                    </div>
-                  </motion.div>
-                ))
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {filteredEvents.map((event) => (
+                    <motion.div key={event.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 flex flex-col gap-4">
+                       <div className="flex justify-between items-start">
+                         <div className="bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 px-3 py-1 rounded-md text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 animate-pulse">
+                           <div className="w-2 h-2 rounded-full bg-amber-500" /> Happening Today
+                         </div>
+                         <span className="font-bold text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-700 px-3 py-1 rounded-lg text-sm">{event.time || "All Day"}</span>
+                       </div>
+                       <div>
+                         <h3 className="text-2xl font-extrabold text-slate-800 dark:text-white mb-2">{event.title}</h3>
+                         <div className="flex items-center gap-2 text-sm font-semibold text-slate-500 dark:text-slate-400">
+                           <MapPin className="w-4 h-4 text-rose-500" /> {event.location || (event as any).venue || "Campus"}
+                         </div>
+                       </div>
+                       <button onClick={() => navigate(`/student/event/${event.id}`)} className="mt-auto w-full bg-slate-900 dark:bg-white text-white dark:text-slate-900 py-3 rounded-xl font-bold hover:opacity-90 transition-opacity">
+                         View Details
+                       </button>
+                    </motion.div>
+                  ))}
+                </div>
               )}
-            </motion.div>
+            </div>
+          )}
+
+
+        {/* 3. EVENTS TAB - TIMELINE */}
+          {activeTab === "events" && (
+            <div className="space-y-8">
+               <div className="flex justify-between items-center mb-6">
+                 <h2 className="text-2xl font-bold text-slate-800 dark:text-white">Events Timeline</h2>
+                 
+                 <div className="relative w-72 group">
+                   <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 group-focus-within:text-indigo-500 transition-colors" />
+                   <Input
+                     placeholder="Search events..."
+                     value={searchQuery}
+                     onChange={(e) => setSearchQuery(e.target.value)}
+                     className="pl-11 rounded-full bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 h-11 text-slate-700 dark:text-slate-200 focus-visible:ring-indigo-500"
+                   />
+                 </div>
+               </div>
+
+               {filteredEvents.length === 0 ? (
+                 <div className="py-20 text-center text-slate-500 dark:text-slate-400 bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700">
+                   <Search className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                   <p className="text-lg font-bold">No events found matching your search.</p>
+                 </div>
+               ) : (
+                 <div className="relative border-l-2 border-indigo-100 dark:border-indigo-900 ml-4 md:ml-6 space-y-12 pb-10">
+                   {filteredEvents.sort((a,b) => (a.date > b.date ? 1 : -1)).map((event) => (
+                     <motion.div key={event.id} initial={{opacity:0, x:-20}} animate={{opacity:1, x:0}} className="relative pl-8 md:pl-12">
+                       {/* Timeline dot */}
+                       <div className="absolute -left-[9px] top-6 w-4 h-4 rounded-full bg-indigo-500 shadow-[0_0_0_4px_rgba(99,102,241,0.2)] dark:shadow-[0_0_0_4px_rgba(99,102,241,0.1)]" />
+                       
+                       {/* Event Card */}
+                       <div onClick={() => navigate(`/student/event/${event.id}`)} className="bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 hover:shadow-lg hover:-translate-y-1 transition-all cursor-pointer group flex flex-col md:flex-row gap-6">
+                         <div className="flex-1 space-y-3">
+                           <div className="flex items-center gap-3">
+                             <span className="text-sm font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30 px-3 py-1 rounded-full">{event.date}</span>
+                             {event.club && <span className="text-xs font-bold text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-600 px-2 py-1 rounded-md">{event.club}</span>}
+                           </div>
+                           <h3 className="text-xl font-bold text-slate-800 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">{event.title}</h3>
+                           <p className="text-sm text-slate-600 dark:text-slate-400 line-clamp-2 md:w-4/5">{event.description || "Join us for this upcoming campus event. Click to view more details and register."}</p>
+                         </div>
+                         <div className="shrink-0 flex flex-col gap-2 justify-center md:items-end border-t md:border-t-0 md:border-l border-slate-100 dark:border-slate-700 pt-4 md:pt-0 md:pl-6">
+                           <span className="flex items-center gap-2 text-sm font-semibold text-slate-600 dark:text-slate-300"><Clock className="w-4 h-4 text-emerald-500" /> {event.time || "TBD"}</span>
+                           <span className="flex items-center gap-2 text-sm font-semibold text-slate-600 dark:text-slate-300"><MapPin className="w-4 h-4 text-rose-500" /> {event.location || (event as any).venue || "Campus"}</span>
+                         </div>
+                       </div>
+                     </motion.div>
+                   ))}
+                 </div>
+               )}
+            </div>
+          )}
+
+          {/* 4. ANNOUNCEMENTS TAB */}
+          {activeTab === "announcements" && (
+            <div className="space-y-6">
+               <div className="flex items-center gap-3 border-b border-slate-200 dark:border-slate-700 pb-4">
+                 <div className="bg-rose-100 dark:bg-rose-900/30 p-2 rounded-lg text-rose-600 dark:text-rose-400">
+                   <Megaphone className="w-6 h-6" />
+                 </div>
+                 <h2 className="text-2xl font-bold text-slate-800 dark:text-white">Campus Feed</h2>
+               </div>
+
+               {announcements.length === 0 ? (
+                 <div className="py-20 text-center text-slate-500 dark:text-slate-400 bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm">
+                   <Bell className="w-16 h-16 mx-auto mb-4 text-slate-300 dark:text-slate-600" />
+                   <p className="text-lg font-bold">You're all caught up!</p>
+                 </div>
+               ) : (
+                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                   {announcements.map((ann) => {
+                     const isUnread = !(ann.readBy || []).includes(auth.currentUser?.uid || "");
+                     return (
+                       <motion.div key={ann.id} initial={{opacity:0, scale:0.95}} animate={{opacity:1, scale:1}} className={`bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border ${isUnread ? "border-rose-400 shadow-rose-100 dark:shadow-rose-900/20" : "border-slate-100 dark:border-slate-700"} flex flex-col`}>
+                          <div className="flex justify-between items-start mb-4">
+                            <h3 className="text-lg font-bold text-slate-800 dark:text-white pr-4">{ann.title}</h3>
+                            {isUnread && <span className="bg-rose-500 text-white text-[10px] uppercase tracking-wider font-bold px-2 py-0.5 rounded-sm shrink-0">New</span>}
+                          </div>
+                          <p className="text-slate-600 dark:text-slate-400 text-sm leading-relaxed whitespace-pre-wrap flex-1">{ann.message}</p>
+                          <div className="mt-6 pt-4 border-t border-slate-100 dark:border-slate-700 text-xs font-semibold text-slate-400 dark:text-slate-500 text-right">
+                             {ann.createdAt instanceof Date ? ann.createdAt.toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric'}) : "Recently"}
+                          </div>
+                       </motion.div>
+                     )
+                   })}
+                 </div>
+               )}
+            </div>
+          )}
+
+          {/* 5. PROFILE & CERTIFICATES TAB */}
+          {activeTab === "profile" && (
+            <div className="space-y-8 max-w-5xl mx-auto">
+               {/* Banner & Avatar */}
+               <div className="bg-white dark:bg-slate-800 rounded-3xl shadow-sm border border-slate-100 dark:border-slate-700 overflow-hidden">
+                 <div className="h-40 bg-gradient-to-r from-blue-600 to-indigo-600 relative">
+                   <div className="absolute inset-0 bg-white/10 dark:bg-black/10 mix-blend-overlay" />
+                 </div>
+                 <div className="px-8 pb-8 relative">
+                   <div className="flex flex-col sm:flex-row items-center sm:items-end justify-between gap-6 -mt-16 sm:-mt-20">
+                     <div className="relative group/avatar cursor-pointer shrink-0 z-10">
+                       <div className="h-32 w-32 rounded-full overflow-hidden bg-slate-100 dark:bg-slate-900 flex items-center justify-center border-4 border-white dark:border-slate-800 shadow-xl transition-all">
+                         {photoURL ? (
+                           <img src={photoURL} alt="Profile" className="h-full w-full object-cover" />
+                         ) : (
+                           <div className="w-full h-full bg-indigo-500 text-white flex items-center justify-center font-bold text-4xl">
+                             {name ? name.charAt(0).toUpperCase() : "U"}
+                           </div>
+                         )}
+                       </div>
+                       {isEditing && (
+                         <div className="absolute inset-0 bg-black/60 rounded-full opacity-0 group-hover/avatar:opacity-100 flex items-center justify-center transition-opacity border-4 border-transparent">
+                           <span className="text-white text-xs font-bold uppercase tracking-widest">Edit</span>
+                           <input type="file" accept="image/*" onChange={handleImageUpload} className="absolute inset-0 opacity-0 cursor-pointer" />
+                         </div>
+                       )}
+                     </div>
+                     <Button onClick={() => isEditing ? handleSave() : setIsEditing(true)} className="rounded-full px-6 py-2 bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-bold hover:scale-105 transition-all mb-2 border-0 shadow-md">
+                       {isEditing ? "Save Profile" : "Edit Profile"}
+                     </Button>
+                   </div>
+                   
+                   <div className="mt-8">
+                     {isEditing ? (
+                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-slate-50 dark:bg-slate-900/50 p-6 rounded-2xl border border-slate-100 dark:border-slate-700">
+                         <div className="col-span-1 md:col-span-2 bg-amber-50 dark:bg-amber-900/20 border-l-4 border-amber-500 p-4 rounded-r-lg mb-2">
+                           <p className="text-amber-800 dark:text-amber-400 text-sm font-bold flex items-center gap-2"><CheckCircle className="w-4 h-4"/> Full Name is required for valid certificates.</p>
+                         </div>
+                         <Input placeholder="Full Name" value={name} onChange={(e) => setName(e.target.value)} className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 dark:text-white" />
+                         <Input placeholder="Register Number" value={registerNumber} onChange={(e) => setRegisterNumber(e.target.value)} className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 dark:text-white" />
+                         <Input placeholder="Phone Number" value={phone} onChange={(e) => setPhone(e.target.value)} className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 dark:text-white" />
+                         <Input placeholder="Branch" value={branch} onChange={(e) => setBranch(e.target.value)} className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 dark:text-white" />
+                         <Input placeholder="Year" value={year} onChange={(e) => setYear(e.target.value)} className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 dark:text-white col-span-1 md:col-span-2" />
+                       </div>
+                     ) : (
+                       <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                         <div className="col-span-1 md:col-span-2">
+                           <h2 className="text-2xl font-black text-slate-800 dark:text-white">{name || "Student Name"}</h2>
+                           <p className="text-slate-500 dark:text-slate-400 font-medium mb-6">{auth.currentUser?.email}</p>
+                           <div className="grid grid-cols-2 gap-y-4 gap-x-8">
+                             <div>
+                               <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1">Branch</p>
+                               <p className="font-semibold text-slate-700 dark:text-slate-300">{branch || "—"}</p>
+                             </div>
+                             <div>
+                               <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1">Year</p>
+                               <p className="font-semibold text-slate-700 dark:text-slate-300">{year || "—"}</p>
+                             </div>
+                             <div>
+                               <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1">Register No.</p>
+                               <p className="font-semibold text-slate-700 dark:text-slate-300">{registerNumber || "—"}</p>
+                             </div>
+                             <div>
+                               <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1">Phone</p>
+                               <p className="font-semibold text-slate-700 dark:text-slate-300">{phone || "—"}</p>
+                             </div>
+                           </div>
+                         </div>
+                         <div className="col-span-1 flex flex-col gap-4">
+                           <div className="bg-blue-50 dark:bg-blue-900/20 rounded-2xl p-4 border border-blue-100 dark:border-blue-900/30">
+                             <p className="text-xs font-bold text-blue-600 dark:text-blue-400 uppercase tracking-wider mb-1">Events Joined</p>
+                             <p className="text-3xl font-black text-blue-700 dark:text-blue-300">{myRegistrations.length}</p>
+                           </div>
+                           <div className="bg-emerald-50 dark:bg-emerald-900/20 rounded-2xl p-4 border border-emerald-100 dark:border-emerald-900/30">
+                             <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider mb-1">Certificates</p>
+                             <p className="text-3xl font-black text-emerald-700 dark:text-emerald-300">{certificates.length}</p>
+                           </div>
+                         </div>
+                       </div>
+                     )}
+                   </div>
+                 </div>
+               </div>
+
+               {/* My Certificates Section */}
+               <div className="bg-white dark:bg-slate-800 rounded-3xl p-8 shadow-sm border border-slate-100 dark:border-slate-700">
+                 <div className="flex items-center gap-3 mb-6">
+                   <div className="bg-emerald-100 dark:bg-emerald-900/30 p-2 rounded-xl text-emerald-600 dark:text-emerald-400">
+                     <Award className="w-6 h-6" />
+                   </div>
+                   <h3 className="text-2xl font-bold text-slate-800 dark:text-white">My Certificates</h3>
+                 </div>
+
+                 {certificates.length === 0 ? (
+                   <div className="text-center py-10 bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-100 dark:border-slate-800">
+                     <p className="font-medium text-slate-500 dark:text-slate-400">You haven't earned any certificates yet.</p>
+                   </div>
+                 ) : (
+                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                     {certificates.map((cert) => (
+                       <div key={cert.id} className="bg-slate-50 dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 hover:shadow-md transition-shadow flex flex-col items-center text-center gap-4">
+                         <div className="w-16 h-16 bg-gradient-to-br from-emerald-400 to-teal-500 rounded-2xl flex items-center justify-center text-white shadow-lg mb-2">
+                           <Award className="w-8 h-8" />
+                         </div>
+                         <div>
+                           <h4 className="font-bold text-slate-800 dark:text-white">{cert.eventName || "Event Certificate"}</h4>
+                           <p className="text-xs mt-1 text-slate-500 dark:text-slate-400 font-semibold">{cert.createdAt ? new Date((cert.createdAt as any).seconds * 1000).toLocaleDateString() : "Recently"}</p>
+                         </div>
+                         <div className="flex w-full gap-2 mt-2 flex-col sm:flex-row">
+                           <Button onClick={() => setPreviewCert(cert.certificateURL!)} variant="outline" className="flex-1 rounded-full border-slate-200 dark:border-slate-600 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-800">View</Button>
+                           <a href={getDownloadUrl(cert.certificateURL)} download className="flex-1 flex justify-center items-center bg-emerald-500 text-white rounded-full font-bold hover:bg-emerald-600 transition-colors py-2 px-4 shadow-sm text-sm">Download</a>
+                         </div>
+                       </div>
+                     ))}
+                   </div>
+                 )}
+               </div>
+            </div>
           )}
 
         </div>
