@@ -47,7 +47,8 @@ const Login = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!email || !password) {
+    const cleanEmail = email.trim();
+    if (!cleanEmail || !password) {
       toast.error("Fill all fields");
       return;
     }
@@ -64,7 +65,7 @@ const Login = () => {
           return;
         }
 
-        const methods = await fetchSignInMethodsForEmail(auth, email);
+        const methods = await fetchSignInMethodsForEmail(auth, cleanEmail);
         if (methods.length > 0) {
           toast.error("Account already exists. Please login.");
           setLoading(false);
@@ -73,7 +74,7 @@ const Login = () => {
 
         const allowedQ = query(
           collection(db, "allowed_users"),
-          where("email", "==", email.toLowerCase().trim())
+          where("email", "==", cleanEmail.toLowerCase())
         );
         const allowedSnap = await getDocs(allowedQ);
 
@@ -86,7 +87,7 @@ const Login = () => {
         const allowedData = allowedSnap.docs[0].data();
 
         console.log("Creating user...");
-        const cred = await createUserWithEmailAndPassword(auth, email, password);
+        const cred = await createUserWithEmailAndPassword(auth, cleanEmail, password);
         const user = cred.user;
         const uid = user.uid;
         
@@ -97,9 +98,13 @@ const Login = () => {
         // Add to users
         await setDoc(doc(db, "users", uid), {
           name: allowedData.name || "",
-          email: email.toLowerCase().trim(),
+          email: cleanEmail.toLowerCase(),
           role: allowedData.role,
           club: allowedData.club || null,
+          branch: "",
+          year: "",
+          semester: "",
+          allowStaffView: true
         });
 
         // (They are already in allowed_users because SuperAdmin put them there, so no need to transfer)
@@ -115,7 +120,7 @@ const Login = () => {
       }
 
       // ================= LOGIN =================
-      const cred = await signInWithEmailAndPassword(auth, email, password);
+      const cred = await signInWithEmailAndPassword(auth, cleanEmail, password);
 
       // ✅ FIX: Reload and then read from auth.currentUser (not stale cred.user)
       await cred.user.reload();
@@ -149,13 +154,27 @@ const Login = () => {
 
       const snap = await getDoc(doc(db, "users", user.uid));
 
-      if (!snap.exists()) {
-        toast.error("User profile not found. Contact admin.");
-        setLoading(false);
-        return;
-      }
+      let data: any;
 
-      const data = snap.data() as { role?: string; name?: string; club?: string };
+      if (!snap.exists()) {
+        console.log("Auth UID:", user.uid);
+        
+        const fallbackRole = allowedLoginCheck.empty ? "student" : (allowedLoginCheck.docs[0].data().role || "student");
+        
+        data = {
+          uid: user.uid,
+          email: user.email,
+          role: fallbackRole, 
+          branch: "",
+          year: "",
+          semester: "",
+          allowStaffView: true
+        };
+        
+        await setDoc(doc(db, "users", user.uid), data);
+      } else {
+        data = snap.data();
+      }
 
       if (!data?.role) {
         toast.error("No role assigned to your account. Contact admin.");
@@ -173,6 +192,11 @@ const Login = () => {
         return;
       }
 
+      if (data.role === "staffAdvisor") {
+        navigate("/staff", { replace: true });
+        return;
+      }
+
       if (data.role === "admin" || data.role === "club_admin" || data.role === "clubAdmin") {
         navigate("/admin", { replace: true });
         return;
@@ -186,11 +210,11 @@ const Login = () => {
       const code = error.code ?? "";
 
       if (code === "auth/wrong-password" || code === "auth/invalid-credential") {
-        toast.error("Incorrect password or email. Please try again.");
+        toast.error("Invalid email or password");
       } else if (code === "auth/user-not-found") {
         toast.error("No account found with this email.");
       } else if (code === "auth/email-already-in-use") {
-        toast.error("This account is already created. Please login instead.");
+        toast.error("User already exists. Please login");
       } else if (code === "auth/too-many-requests") {
         toast.error("Too many failed attempts. Please try again later.");
       } else {

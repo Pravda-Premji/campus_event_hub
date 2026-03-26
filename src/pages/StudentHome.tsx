@@ -84,7 +84,9 @@ const StudentHome = () => {
   const [phone, setPhone] = useState("");
   const [branch, setBranch] = useState("");
   const [year, setYear] = useState("");
+  const [semester, setSemester] = useState("");
   const [photoURL, setPhotoURL] = useState("");
+  const [allowStaffView, setAllowStaffView] = useState(true);
 const [flippedId, setFlippedId] = useState<string | null>(null);
   const [events, setEvents] = useState<EventItem[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
@@ -242,7 +244,13 @@ const [flippedId, setFlippedId] = useState<string | null>(null);
         setPhone(data.phone || "");
         setBranch(data.branch || "");
         setYear(data.year || "");
+        setSemester(data.semester || "");
         setPhotoURL(data.photoURL || "");
+        if (data.allowStaffView !== undefined) {
+          setAllowStaffView(data.allowStaffView);
+        } else {
+          setAllowStaffView(true);
+        }
       }
 
       try {
@@ -293,7 +301,9 @@ const [flippedId, setFlippedId] = useState<string | null>(null);
       phone,
       branch,
       year,
+      semester,
       photoURL,
+      allowStaffView,
     });
 
     toast.success("Profile saved successfully");
@@ -521,6 +531,28 @@ const [flippedId, setFlippedId] = useState<string | null>(null);
           {/* 1. DASHBOARD OVERVIEW */}
           {activeTab === "dashboard" && (
             <div className="space-y-8">
+              
+              {/* TOP ANNOUNCEMENT BANNER */}
+              {announcements.length > 0 && (
+                <div className="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl p-4 text-white shadow-lg flex flex-col md:flex-row md:items-center gap-4 relative overflow-hidden group">
+                  <div className="absolute -right-10 -top-10 w-32 h-32 bg-white/10 rounded-full blur-2xl pointer-events-none transition-transform group-hover:scale-110" />
+                  <div className="shrink-0 bg-white/20 p-3 rounded-xl backdrop-blur-md self-start md:self-center">
+                    <Megaphone className="w-6 h-6 text-white animate-pulse" />
+                  </div>
+                  <div className="flex-1 overflow-hidden">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="bg-rose-500 text-[10px] uppercase font-bold px-2 py-0.5 rounded-sm tracking-wider">Latest</span>
+                      <h4 className="font-bold text-sm text-blue-100 line-clamp-1">{announcements[0].title}</h4>
+                    </div>
+                    <p className="text-sm font-medium text-white line-clamp-2 md:line-clamp-1">
+                      {announcements[0].message}
+                    </p>
+                  </div>
+                  <button onClick={() => setActiveTab("announcements")} className="shrink-0 self-start md:self-center bg-white text-indigo-600 px-5 py-2 rounded-full text-sm font-bold shadow-sm hover:shadow-md transition-all hover:scale-105 border-0">
+                    View All Updates
+                  </button>
+                </div>
+              )}
               {/* Stat Cards */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 p-6 flex flex-col justify-center gap-4 hover:shadow-md hover:scale-[1.02] transition-all">
@@ -776,7 +808,8 @@ const [flippedId, setFlippedId] = useState<string | null>(null);
                          <Input placeholder="Register Number" value={registerNumber} onChange={(e) => setRegisterNumber(e.target.value)} className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 dark:text-white" />
                          <Input placeholder="Phone Number" value={phone} onChange={(e) => setPhone(e.target.value)} className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 dark:text-white" />
                          <Input placeholder="Branch" value={branch} onChange={(e) => setBranch(e.target.value)} className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 dark:text-white" />
-                         <Input placeholder="Year" value={year} onChange={(e) => setYear(e.target.value)} className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 dark:text-white col-span-1 md:col-span-2" />
+                         <Input placeholder="Year" value={year} onChange={(e) => setYear(e.target.value)} className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 dark:text-white" />
+                         <Input placeholder="Semester" value={semester} onChange={(e) => setSemester(e.target.value)} className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 dark:text-white col-span-1 md:col-span-2" />
                        </div>
                      ) : (
                        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -791,6 +824,10 @@ const [flippedId, setFlippedId] = useState<string | null>(null);
                              <div>
                                <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1">Year</p>
                                <p className="font-semibold text-slate-700 dark:text-slate-300">{year || "—"}</p>
+                             </div>
+                             <div>
+                               <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1">Semester</p>
+                               <p className="font-semibold text-slate-700 dark:text-slate-300">{semester || "—"}</p>
                              </div>
                              <div>
                                <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1">Register No.</p>
@@ -818,6 +855,116 @@ const [flippedId, setFlippedId] = useState<string | null>(null);
                  </div>
                </div>
 
+               {/* Privacy Settings */}
+               <div className="bg-white dark:bg-slate-800 rounded-3xl p-8 shadow-sm border border-slate-100 dark:border-slate-700">
+                 <div className="flex items-center gap-3 mb-6">
+                   <div className="bg-indigo-100 dark:bg-indigo-900/30 p-2 rounded-xl text-indigo-600 dark:text-indigo-400">
+                     <User className="w-6 h-6" />
+                   </div>
+                   <h3 className="text-2xl font-bold text-slate-800 dark:text-white">Privacy Settings</h3>
+                 </div>
+                 
+                 <div className="flex items-center justify-between bg-slate-50 dark:bg-slate-900/50 p-6 rounded-2xl border border-slate-100 dark:border-slate-800">
+                   <div>
+                     <h4 className="font-bold text-slate-800 dark:text-white text-lg">Staff Advisor Visibility</h4>
+                     <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Allow your Staff Advisor to view your event participation and certificates.</p>
+                   </div>
+                   <button 
+                     onClick={async () => {
+                       const newValue = !allowStaffView;
+                       setAllowStaffView(newValue);
+                       const user = auth.currentUser;
+                       if (user) {
+                         await updateDoc(doc(db, "users", user.uid), { allowStaffView: newValue });
+                         toast.success(newValue ? "Visibility granted to Staff Advisor" : "Visibility revoked from Staff Advisor");
+                       }
+                     }}
+                     className={`relative inline-flex h-8 w-14 shrink-0 cursor-pointer items-center justify-center rounded-full focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:ring-offset-2 transition-colors ${allowStaffView ? 'bg-indigo-600' : 'bg-slate-300 dark:bg-slate-600'}`}
+                   >
+                     <span className="sr-only">Toggle Staff Visibility</span>
+                     <span aria-hidden="true" className={`pointer-events-none absolute left-1 h-6 w-6 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${allowStaffView ? 'translate-x-6' : 'translate-x-0'}`} />
+                   </button>
+                 </div>
+               </div>
+
+               {/* Registered Events Section */}
+               <div className="bg-white dark:bg-slate-800 rounded-3xl p-8 shadow-sm border border-slate-100 dark:border-slate-700">
+                 <div className="flex items-center gap-3 mb-6">
+                   <div className="bg-blue-100 dark:bg-blue-900/30 p-2 rounded-xl text-blue-600 dark:text-blue-400">
+                     <Star className="w-6 h-6" />
+                   </div>
+                   <h3 className="text-2xl font-bold text-slate-800 dark:text-white">Registered Events</h3>
+                 </div>
+
+                 {myRegistrations.length === 0 ? (
+                   <div className="text-center py-10 bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-100 dark:border-slate-800">
+                     <p className="font-medium text-slate-500 dark:text-slate-400">You haven't registered for any events yet.</p>
+                   </div>
+                 ) : (
+                   <div className="space-y-4">
+                     {myRegistrations
+                       .map(reg => events.find(e => e.id === reg.eventId))
+                       .filter(e => e && e.date >= todayString)
+                       .map((event) => event && (
+                       <div key={event.id} className="bg-slate-50 dark:bg-slate-900/50 p-5 rounded-2xl border border-slate-100 dark:border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:shadow-md transition-shadow">
+                         <div>
+                           <h4 className="font-bold text-lg text-slate-800 dark:text-slate-200">{event.title}</h4>
+                           <div className="flex items-center gap-4 mt-2">
+                             <p className="text-xs text-slate-500 dark:text-slate-400 font-medium flex items-center gap-1"><Calendar className="w-3.5 h-3.5"/> {event.date}</p>
+                           </div>
+                         </div>
+                         <div className="shrink-0 flex items-center gap-3">
+                           <span className="bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300 text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider">Upcoming</span>
+                           <Button onClick={() => navigate(`/student/event/${event.id}`)} variant="outline" size="sm" className="rounded-full shadow-sm">View Event</Button>
+                         </div>
+                       </div>
+                     ))}
+                     {myRegistrations.filter(reg => {
+                       const e = events.find(ev => ev.id === reg.eventId);
+                       return e && e.date >= todayString;
+                     }).length === 0 && (
+                       <div className="text-center py-8 text-slate-500 font-medium">No upcoming registered events.</div>
+                     )}
+                   </div>
+                 )}
+               </div>
+
+               {/* Past Events Section */}
+               <div className="bg-white dark:bg-slate-800 rounded-3xl p-8 shadow-sm border border-slate-100 dark:border-slate-700">
+                 <div className="flex items-center gap-3 mb-6">
+                   <div className="bg-slate-100 dark:bg-slate-700 p-2 rounded-xl text-slate-600 dark:text-slate-300">
+                     <Clock className="w-6 h-6" />
+                   </div>
+                   <h3 className="text-2xl font-bold text-slate-800 dark:text-white">Past Events</h3>
+                 </div>
+
+                 <div className="space-y-4">
+                   {myRegistrations
+                     .map(reg => events.find(e => e.id === reg.eventId))
+                     .filter(e => e && e.date < todayString)
+                     .map((event) => event && (
+                     <div key={event.id} className="bg-slate-50 dark:bg-slate-900/50 p-5 rounded-2xl border border-slate-100 dark:border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-4 opacity-80 hover:opacity-100 transition-opacity">
+                       <div>
+                         <h4 className="font-bold text-lg text-slate-800 dark:text-slate-200">{event.title}</h4>
+                         <div className="flex items-center gap-4 mt-2">
+                           <p className="text-xs text-slate-500 dark:text-slate-400 font-medium flex items-center gap-1"><Calendar className="w-3.5 h-3.5"/> {event.date}</p>
+                         </div>
+                       </div>
+                       <div className="shrink-0 flex items-center gap-3">
+                         <span className="bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-300 text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider">Completed</span>
+                         <Button onClick={() => navigate(`/student/event/${event.id}`)} variant="outline" size="sm" className="rounded-full shadow-sm">Details</Button>
+                       </div>
+                     </div>
+                   ))}
+                   {myRegistrations.filter(reg => {
+                     const e = events.find(ev => ev.id === reg.eventId);
+                     return e && e.date < todayString;
+                   }).length === 0 && (
+                     <div className="text-center py-8 text-slate-500 font-medium bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-100 dark:border-slate-800">You haven't attended any events yet.</div>
+                   )}
+                 </div>
+               </div>
+
                {/* My Certificates Section */}
                <div className="bg-white dark:bg-slate-800 rounded-3xl p-8 shadow-sm border border-slate-100 dark:border-slate-700">
                  <div className="flex items-center gap-3 mb-6">
@@ -833,21 +980,23 @@ const [flippedId, setFlippedId] = useState<string | null>(null);
                    </div>
                  ) : (
                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                     {certificates.map((cert) => (
-                       <div key={cert.id} className="bg-slate-50 dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 hover:shadow-md transition-shadow flex flex-col items-center text-center gap-4">
+                     {certificates.map((cert) => {
+                       const eventData = events.find(e => e.id === cert.eventId);
+                       return (
+                       <div key={cert.id} className="bg-slate-50 dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 hover:shadow-md transition-shadow flex flex-col items-center text-center gap-4 scale-100 hover:scale-[1.02]">
                          <div className="w-16 h-16 bg-gradient-to-br from-emerald-400 to-teal-500 rounded-2xl flex items-center justify-center text-white shadow-lg mb-2">
                            <Award className="w-8 h-8" />
                          </div>
                          <div>
-                           <h4 className="font-bold text-slate-800 dark:text-white">{cert.eventName || "Event Certificate"}</h4>
-                           <p className="text-xs mt-1 text-slate-500 dark:text-slate-400 font-semibold">{cert.createdAt ? new Date((cert.createdAt as any).seconds * 1000).toLocaleDateString() : "Recently"}</p>
+                           <h4 className="font-bold text-slate-800 dark:text-white">{eventData?.title || cert.eventName || "Event Certificate"}</h4>
+                           <p className="text-xs mt-1 text-slate-500 dark:text-slate-400 font-semibold flex items-center gap-1 justify-center"><Calendar className="w-3 h-3"/> {eventData?.date || (cert.createdAt ? new Date((cert.createdAt as any).seconds * 1000).toLocaleDateString() : "Recently")}</p>
                          </div>
-                         <div className="flex w-full gap-2 mt-2 flex-col sm:flex-row">
-                           <Button onClick={() => setPreviewCert(cert.certificateURL!)} variant="outline" className="flex-1 rounded-full border-slate-200 dark:border-slate-600 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-800">View</Button>
+                         <div className="flex w-full gap-2 mt-auto flex-col sm:flex-row pt-4">
+                           <Button onClick={() => setPreviewCert(cert.certificateURL!)} variant="outline" className="flex-1 rounded-full border-slate-200 dark:border-slate-600 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-800 font-bold">Preview</Button>
                            <a href={getDownloadUrl(cert.certificateURL)} download className="flex-1 flex justify-center items-center bg-emerald-500 text-white rounded-full font-bold hover:bg-emerald-600 transition-colors py-2 px-4 shadow-sm text-sm">Download</a>
                          </div>
                        </div>
-                     ))}
+                     )})}
                    </div>
                  )}
                </div>

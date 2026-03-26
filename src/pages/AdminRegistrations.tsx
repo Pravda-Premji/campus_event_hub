@@ -22,6 +22,7 @@ interface RegItem {
   studentName?: string;
   branch?: string;
   year?: string;
+  semester?: string;
   phone?: string;
   [key: string]: unknown;
 }
@@ -233,6 +234,7 @@ const AdminRegistrations = () => {
             {student.email && <p><strong>Email:</strong> {student.email}</p>}
             <p><strong>Branch:</strong> {student.branch}</p>
             <p><strong>Year:</strong> {student.year}</p>
+            <p><strong>Semester:</strong> {student.semester}</p>
             <p><strong>Phone:</strong> {student.phone}</p>
             {student.registeredAt && <p><strong>Registered:</strong> {new Date((student.registeredAt as any).seconds * 1000).toLocaleString()}</p>}
 

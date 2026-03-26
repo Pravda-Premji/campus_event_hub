@@ -9,6 +9,7 @@ import ProtectedRoute from "@/components/ProtectedRoute";
 import { Toaster } from "sonner";
 import AdminRegistrations from "./pages/AdminRegistrations";
 import SuperAdminPage from "./pages/SuperAdminPage";
+import StaffAdvisorPage from "./pages/StaffAdvisorPage";
 import NotFound from "./pages/NotFound";
 import HelpButton from "./components/HelpButton";
 import ThemeToggle from "./components/ThemeToggle";
@@ -73,6 +74,15 @@ function App() {
           element={
             <ProtectedRoute requiredRole="superAdmin">
               <SuperAdminPage />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/staff"
+          element={
+            <ProtectedRoute requiredRole="staffAdvisor">
+              <StaffAdvisorPage />
             </ProtectedRoute>
           }
         />

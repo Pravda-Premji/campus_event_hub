@@ -17,6 +17,9 @@ interface UserItem {
   name: string;
   email: string;
   role: string;
+  branch?: string;
+  year?: string;
+  semester?: string;
 }
 
 const SuperAdminPage = () => {
@@ -32,7 +35,10 @@ const SuperAdminPage = () => {
   const [form, setForm] = useState({
     name: "",
     email: "",
-    role: "student"
+    role: "student",
+    branch: "",
+    year: "",
+    semester: ""
   });
 
   // Modal states for replacing email
@@ -107,16 +113,27 @@ const SuperAdminPage = () => {
         return;
       }
 
-      // Step 1: Add to allowed_users collection directly
-      await addDoc(collection(db, "allowed_users"), {
+      const newUserDoc: any = {
         name: form.name,
         email: form.email.toLowerCase().trim(),
         role: form.role,
         createdAt: new Date()
-      });
+      };
+
+      if (form.role === "staffAdvisor") {
+        if (!form.branch || !form.year || !form.semester) {
+          toast.error("Please fill branch, year and semester for Staff Advisor");
+          return;
+        }
+        newUserDoc.branch = form.branch;
+        newUserDoc.year = form.year;
+        newUserDoc.semester = form.semester;
+      }
+
+      await addDoc(collection(db, "allowed_users"), newUserDoc);
 
       toast.success("User added. They can now sign up and login.");
-      setForm({ name: "", email: "", role: "student" });
+      setForm({ name: "", email: "", role: "student", branch: "", year: "", semester: "" });
       await fetchUsers();
 
     } catch (error: any) {
@@ -306,8 +323,28 @@ const SuperAdminPage = () => {
                 >
                   <option value="student">Student</option>
                   <option value="clubAdmin">Club Admin</option>
+                  <option value="staffAdvisor">Staff Advisor</option>
                 </select>
               </div>
+
+              {form.role === "staffAdvisor" && (
+                <div className="space-y-4">
+                  <div>
+                    <label className="text-sm font-medium text-slate-700">Branch</label>
+                    <Input placeholder="e.g. Computer Science" value={form.branch} onChange={e => setForm({...form, branch: e.target.value})} />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-sm font-medium text-slate-700">Year</label>
+                      <Input placeholder="e.g. 3rd Year" value={form.year} onChange={e => setForm({...form, year: e.target.value})} />
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-slate-700">Semester</label>
+                      <Input placeholder="e.g. 6th" value={form.semester} onChange={e => setForm({...form, semester: e.target.value})} />
+                    </div>
+                  </div>
+                </div>
+              )}
 
               <Button type="submit" className="w-full bg-slate-900 text-white hover:bg-slate-800">
                 Create User
