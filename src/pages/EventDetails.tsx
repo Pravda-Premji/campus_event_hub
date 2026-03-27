@@ -40,13 +40,31 @@ const [paymentFile, setPaymentFile] = useState<File | null>(null);
 const [showImageModal, setShowImageModal] = useState(false);
 const [isRegistered, setIsRegistered] = useState(false);
 
+  const [isProfileComplete, setIsProfileComplete] = useState(true);
+
   useEffect(() => {
-    const checkRegistrationStatus = async () => {
-      if (!eventId) return;
+    const checkUserStatus = async () => {
       const user = auth.currentUser;
-      if (!user) return;
+      if (!user) {
+        if (eventId) {
+          setIsProfileComplete(true); // Don't block if not logged in until they try
+        }
+        return;
+      }
       
       try {
+        // Check profile
+        const userDoc = await getDoc(doc(db, "users", user.uid));
+        const userData = userDoc.data();
+        
+        if (!userData || !userData.name || !userData.branch || !userData.year || !userData.semester || !user.email) {
+          setIsProfileComplete(false);
+        } else {
+          setIsProfileComplete(true);
+        }
+
+        // Check registration status
+        if (!eventId) return;
         const q = query(
           collection(db, "registrations"),
           where("eventId", "==", eventId),
@@ -54,19 +72,19 @@ const [isRegistered, setIsRegistered] = useState(false);
         );
         const snap = await getDocs(q);
         if (!snap.empty) {
+          setIsProfileComplete(true);
           setIsRegistered(true);
         }
       } catch (err) {
-        console.error("Failed to check registration", err);
+        console.error("Failed to check user status", err);
       }
     };
     
-    // Quick check if auth is available, alternatively could depend on a user state
     if (auth.currentUser) {
-      checkRegistrationStatus();
+      checkUserStatus();
     } else {
       const unsubscribe = auth.onAuthStateChanged((user) => {
-        if (user) checkRegistrationStatus();
+        if (user) checkUserStatus();
       });
       return () => unsubscribe();
     }
@@ -103,15 +121,18 @@ const [isRegistered, setIsRegistered] = useState(false);
         return;
       }
       
-      const userDoc = await getDoc(doc(db, "users", user.uid));
-      const userData = userDoc.data();
-
-      // Duplicate check dynamically against firestore
       const existingQuery = query(
         collection(db, "registrations"),
         where("eventId", "==", eventId),
         where("userId", "==", user.uid)
       );
+      const userDoc = await getDoc(doc(db, "users", user.uid));
+      const userData = userDoc.data();
+
+      if (!userData || !userData.name || !userData.branch || !userData.year || !userData.semester || !user.email) {
+        toast.error("Please complete your profile before registering for events");
+        return;
+      }
       const existingSnap = await getDocs(existingQuery);
       if (!existingSnap.empty) {
         toast.error("Already Registered");
@@ -162,6 +183,11 @@ const [isRegistered, setIsRegistered] = useState(false);
   where("eventId", "==", eventId),
   where("email", "==", user.email)
 );
+
+if (!userData || !userData.name || !userData.branch || !userData.year || !userData.semester || !user.email) {
+  toast.error("Please complete your profile before registering for events");
+  return;
+}
 
 const existingSnap = await getDocs(existingQuery);
 
@@ -236,6 +262,9 @@ await addDoc(collection(db, "registrations"), {
       </div>
     );
   }
+
+  const todayString = new Date().toISOString().split("T")[0];
+  const isPastEvent = event?.date ? event.date < todayString : false;
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 relative overflow-x-hidden transition-colors duration-300 flex flex-col">
@@ -317,13 +346,29 @@ await addDoc(collection(db, "registrations"), {
                         {event.eventType === "paid" ? "₹Paid" : "Free"}
                       </p>
                    </div>
-                   <button
-                     onClick={() => setShowRegister(true)}
-                     className="w-full group relative inline-flex items-center justify-center gap-3 bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 text-white px-8 py-5 rounded-2xl text-xl font-bold shadow-[0_8px_30px_rgba(79,70,229,0.3)] hover:shadow-[0_8px_30px_rgba(79,70,229,0.5)] hover:scale-[1.02] transition-all duration-300"
-                   >
-                     <Zap className="w-6 h-6 animate-pulse" />
-                     Register Now
-                   </button>
+                   {isPastEvent ? (
+                     <button
+                       disabled
+                       className="w-full relative inline-flex items-center justify-center gap-3 bg-slate-300 dark:bg-slate-700 text-slate-500 dark:text-slate-400 px-6 py-5 rounded-2xl text-lg md:text-xl font-bold cursor-not-allowed"
+                     >
+                       Registration closed — event date is over
+                     </button>
+                   ) : !isProfileComplete ? (
+                     <button
+                       disabled
+                       className="w-full relative inline-flex items-center justify-center gap-3 bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400 px-6 py-5 rounded-2xl text-sm md:text-base font-bold cursor-not-allowed border border-red-200 dark:border-red-800"
+                     >
+                       Please complete your profile before registering for events
+                     </button>
+                   ) : (
+                     <button
+                       onClick={() => setShowRegister(true)}
+                       className="w-full group relative inline-flex items-center justify-center gap-3 bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 text-white px-8 py-5 rounded-2xl text-xl font-bold shadow-[0_8px_30px_rgba(79,70,229,0.3)] hover:shadow-[0_8px_30px_rgba(79,70,229,0.5)] hover:scale-[1.02] transition-all duration-300"
+                     >
+                       <Zap className="w-6 h-6 animate-pulse" />
+                       Register Now
+                     </button>
+                   )}
                  </div>
                ) : (
                   <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">

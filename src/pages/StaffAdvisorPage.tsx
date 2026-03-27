@@ -58,8 +58,9 @@ const StaffAdvisorPage = () => {
   const [studentRegs, setStudentRegs] = useState<RegistrationItem[]>([]);
   const [studentCerts, setStudentCerts] = useState<CertItem[]>([]);
   
-  const [profileForm, setProfileForm] = useState({ branch: "", year: "", semester: "" });
+  const [profileForm, setProfileForm] = useState({ name: "", branch: "", year: "", semester: "" });
   const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
+  const [activeTab, setActiveTab] = useState<"students" | "profile">("students");
 
   useEffect(() => {
     const loadStaffData = async () => {
@@ -89,15 +90,15 @@ const StaffAdvisorPage = () => {
         }
 
         setStaffProfile(data);
-        setProfileForm({ branch: data.branch || "", year: data.year || "", semester: data.semester || "" });
+        setProfileForm({ name: data.name || "", branch: data.branch || "", year: data.year || "", semester: data.semester || "" });
         console.log("User UID:", user.uid);
         console.log("Staff:", data);
         
-        if (data.branch && data.year && data.semester) {
+        if (data.branch && data.year && data.semester && data.name) {
           fetchFilteredStudents(data.branch, data.year, data.semester);
         } else {
            setLoading(false);
-           toast.error("Please complete your profile (branch, year, semester) to view students");
+           setActiveTab("profile");
         }
       } catch (err) {
         console.error(err);
@@ -144,8 +145,8 @@ const StaffAdvisorPage = () => {
 
   const handleUpdateProfile = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!profileForm.branch || !profileForm.year || !profileForm.semester) {
-      toast.error("Please complete your profile (branch, year, semester) to view students");
+    if (!profileForm.name || !profileForm.branch || !profileForm.year || !profileForm.semester) {
+      toast.error("All fields are required");
       return;
     }
     
@@ -155,6 +156,7 @@ const StaffAdvisorPage = () => {
       if (!user) return;
       
       await updateDoc(doc(db, "users", user.uid), {
+        name: profileForm.name,
         branch: profileForm.branch,
         year: profileForm.year,
         semester: profileForm.semester
@@ -218,6 +220,9 @@ const StaffAdvisorPage = () => {
         certificateURL: d.data().certificateURL
       }));
       setStudentCerts(certs);
+      
+      // Filter studentRegs to ONLY show events where a certificate exists
+      setStudentRegs(prev => prev.filter(reg => certs.some(c => c.eventId === reg.eventId)));
     } catch(err) { console.error(err); }
   };
 
@@ -244,10 +249,20 @@ const StaffAdvisorPage = () => {
           </div>
         </div>
 
-        <nav className="flex-1 px-4 py-6">
-          <button className="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-semibold bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 shadow-sm border border-indigo-100 dark:border-indigo-500/20">
-            <User className="h-5 w-5 text-indigo-500" />
+        <nav className="flex-1 px-4 py-6 space-y-2">
+          <button 
+            onClick={() => setActiveTab("students")}
+            className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-semibold transition-colors ${activeTab === 'students' ? 'bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 shadow-sm border border-indigo-100 dark:border-indigo-500/20' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'}`}
+          >
+            <User className="h-5 w-5" />
             {!collapsed && <span>My Students</span>}
+          </button>
+          <button 
+            onClick={() => setActiveTab("profile")}
+            className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-semibold transition-colors ${activeTab === 'profile' ? 'bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 shadow-sm border border-indigo-100 dark:border-indigo-500/20' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800'}`}
+          >
+            <FileText className="h-5 w-5" />
+            {!collapsed && <span>My Profile</span>}
           </button>
         </nav>
 
@@ -275,26 +290,45 @@ const StaffAdvisorPage = () => {
           
           {/* STUDENT LIST OR PROFILE SETUP */}
           <div className="w-full lg:w-1/3 flex flex-col gap-4">
-             {(!staffProfile?.branch || !staffProfile?.year || !staffProfile?.semester) ? (
+             {activeTab === "profile" ? (
                <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 overflow-hidden flex-1 p-8 flex flex-col justify-center animate-in fade-in zoom-in-95 duration-300">
                  <ShieldCheck className="w-12 h-12 text-indigo-500 mb-4 mx-auto opacity-80" />
-                 <h2 className="text-xl font-bold text-center text-slate-800 dark:text-slate-200 mb-2">Profile Incomplete</h2>
-                 <p className="text-center text-slate-500 text-sm mb-6">Please complete your profile (branch, year, semester) to view students</p>
+                 <h2 className="text-xl font-bold text-center text-slate-800 dark:text-slate-200 mb-2">My Profile</h2>
+                 <p className="text-center text-slate-500 text-sm mb-6">Update your staff advisor profile details below.</p>
                  <form onSubmit={handleUpdateProfile} className="space-y-4">
                     <div>
+                      <label className="text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1 block">Name</label>
+                      <Input placeholder="Enter your full name" value={profileForm.name} onChange={(e) => setProfileForm({...profileForm, name: e.target.value})} className="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-700" />
+                    </div>
+                    <div>
                       <label className="text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1 block">Branch</label>
-                      <Input value={profileForm.branch} onChange={(e) => setProfileForm({...profileForm, branch: e.target.value})} placeholder="e.g. cs1, it, ec" className="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 rounded-xl" />
+                      <select value={profileForm.branch} onChange={(e) => setProfileForm({...profileForm, branch: e.target.value})} className="flex h-10 w-full px-3 py-2 text-sm bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500">
+                        <option value="" disabled>Select Branch</option>
+                        {["cs1", "cs2", "cs3", "ere", "ec", "it"].map(b => (
+                          <option key={b} value={b}>{b.toUpperCase()}</option>
+                        ))}
+                      </select>
                     </div>
                     <div>
                       <label className="text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1 block">Year</label>
-                      <Input value={profileForm.year} onChange={(e) => setProfileForm({...profileForm, year: e.target.value})} placeholder="e.g. 1, 2, 3, 4" className="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 rounded-xl" />
+                      <select value={profileForm.year} onChange={(e) => setProfileForm({...profileForm, year: e.target.value})} className="flex h-10 w-full px-3 py-2 text-sm bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500">
+                        <option value="" disabled>Select Year</option>
+                        {["1", "2", "3", "4"].map(y => (
+                          <option key={y} value={y}>{y}</option>
+                        ))}
+                      </select>
                     </div>
                     <div>
                       <label className="text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1 block">Semester</label>
-                      <Input value={profileForm.semester} onChange={(e) => setProfileForm({...profileForm, semester: e.target.value})} placeholder="e.g. 1, 2, 3" className="bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 rounded-xl" />
+                      <select value={profileForm.semester} onChange={(e) => setProfileForm({...profileForm, semester: e.target.value})} className="flex h-10 w-full px-3 py-2 text-sm bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500">
+                        <option value="" disabled>Select Semester</option>
+                        {["1", "2", "3", "4", "5", "6", "7", "8"].map(s => (
+                          <option key={s} value={s}>{s}</option>
+                        ))}
+                      </select>
                     </div>
                     <Button type="submit" disabled={isUpdatingProfile} className="w-full bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl py-5 font-bold shadow-sm shadow-indigo-200/50 mt-2 transition-all">
-                      {isUpdatingProfile ? "Saving Profile..." : "Complete Profile"}
+                      {isUpdatingProfile ? "Saving Profile..." : "Save Profile"}
                     </Button>
                  </form>
                </div>

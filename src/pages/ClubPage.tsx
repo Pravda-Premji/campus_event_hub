@@ -131,7 +131,7 @@ useEffect(() => {
             {/* LEFT COLUMN: EVENTS & EXECOM */}
             <div className="lg:col-span-2 space-y-16">
               
-              {/* 🟢 EVENTS (Mirroring the premium StudentHome event cards) */}
+              {/* 🟢 UPCOMING EVENTS */}
               <div>
                 <h2 className="text-2xl font-black text-slate-800 dark:text-white mb-6 flex items-center gap-2">
                   <Calendar className="w-6 h-6 text-indigo-500" />
@@ -139,13 +139,13 @@ useEffect(() => {
                 </h2>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {events.length === 0 ? (
+                  {events.filter(e => e.date && e.date >= new Date().toISOString().split("T")[0]).length === 0 ? (
                     <div className="col-span-1 md:col-span-2 py-12 text-center bg-slate-50 dark:bg-slate-800/30 rounded-2xl border border-slate-100 dark:border-slate-800">
                       <Calendar className="w-10 h-10 mx-auto text-slate-300 dark:text-slate-600 mb-3" />
-                      <p className="text-slate-500 dark:text-slate-400 font-medium">No events currently scheduled.</p>
+                      <p className="text-slate-500 dark:text-slate-400 font-medium">No upcoming events currently scheduled.</p>
                     </div>
                   ) : (
-                    events.map((event, i) => (
+                    events.filter(e => e.date && e.date >= new Date().toISOString().split("T")[0]).map((event, i) => (
                       <motion.div
                         key={event.id}
                         onClick={() => navigate(`/student/event/${event.id}`)}
@@ -170,7 +170,7 @@ useEffect(() => {
                         
                         <div className="relative z-10 w-full mt-auto flex justify-end">
                            <span className="inline-flex items-center justify-center bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 text-white dark:text-slate-900 text-sm font-bold rounded-full px-5 py-2 transition-all">
-                             View Event
+                             Register
                            </span>
                         </div>
                       </motion.div>
@@ -178,6 +178,50 @@ useEffect(() => {
                   )}
                 </div>
               </div>
+
+              {/* 🟢 PAST EVENTS */}
+              {events.filter(e => e.date && e.date < new Date().toISOString().split("T")[0]).length > 0 && (
+                <div className="mt-12">
+                  <h2 className="text-2xl font-black text-slate-800 dark:text-white mb-6 flex items-center gap-2">
+                    <Star className="w-6 h-6 text-slate-400" />
+                    Past Events
+                  </h2>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 opacity-80">
+                    {events.filter(e => e.date && e.date < new Date().toISOString().split("T")[0]).map((event, i) => (
+                      <motion.div
+                        key={event.id}
+                        onClick={() => navigate(`/student/event/${event.id}`)}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        whileHover={{ y: -4 }}
+                        transition={{ delay: i * 0.05 }}
+                        className="group bg-slate-50 dark:bg-slate-800/50 rounded-2xl p-6 border border-slate-200 dark:border-slate-700 flex flex-col gap-6 cursor-pointer transition-all duration-300 relative overflow-hidden saturate-50"
+                      >
+                        <div className="space-y-3 relative z-10 flex-1">
+                          <h3 className="text-xl font-bold tracking-tight text-slate-700 dark:text-slate-300 group-hover:text-slate-900 dark:group-hover:text-white transition-colors">{event.title}</h3>
+                          
+                          <div className="flex flex-wrap items-center gap-2 text-sm font-semibold text-slate-500 dark:text-slate-400">
+                            {event.date && (
+                              <span className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-900/50 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-800">
+                                <Calendar className="w-3.5 h-3.5 text-slate-400" /> 
+                                {event.date}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        
+                        <div className="relative z-10 w-full mt-auto flex justify-end">
+                           <span className="inline-flex items-center justify-center bg-slate-300 dark:bg-slate-700 text-slate-500 dark:text-slate-400 text-sm font-bold rounded-full px-5 py-2">
+                             Registration closed
+                           </span>
+                        </div>
+                      </motion.div>
+                    ))
+                    }
+                  </div>
+                </div>
+              )}
 
                {/* 🟢 GALLERY */}
               {club?.gallery && club.gallery.length > 0 && (

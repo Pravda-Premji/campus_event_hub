@@ -95,7 +95,7 @@ const [flippedId, setFlippedId] = useState<string | null>(null);
     useState<"dashboard" | "events" | "today" | "announcements" | "profile">("dashboard");
 
   const [certificates, setCertificates] = useState<CertificateItem[]>([]);
-  const [myRegistrations, setMyRegistrations] = useState<{eventId?: string}[]>([]);
+  const [myRegistrations, setMyRegistrations] = useState<{eventId?: string, attended?: boolean}[]>([]);
   const [previewCert, setPreviewCert] = useState<string | null>(null);
 
   const [isEditing, setIsEditing] = useState(false);
@@ -271,7 +271,7 @@ const [flippedId, setFlippedId] = useState<string | null>(null);
           where("userId", "==", user.uid)
         );
         const regSnap = await getDocs(regQuery);
-        setMyRegistrations(regSnap.docs.map(doc => doc.data() as {eventId?: string}));
+        setMyRegistrations(regSnap.docs.map(doc => doc.data() as {eventId?: string, attended?: boolean}));
       } catch (err) {
         console.error("Error fetching registrations", err);
       }
@@ -294,6 +294,11 @@ const [flippedId, setFlippedId] = useState<string | null>(null);
   const handleSave = async () => {
     const user = auth.currentUser;
     if (!user) return;
+
+    if (!name || !auth.currentUser?.email || !branch || !year || !semester) {
+      toast.error("All fields except profile picture are required");
+      return;
+    }
 
     await updateDoc(doc(db, "users", user.uid), {
       name,
@@ -328,8 +333,8 @@ const [flippedId, setFlippedId] = useState<string | null>(null);
     if (activeTab === "today") {
       return e.date === todayString;
     }
-    if (activeTab === "events") {
-      return e.date > todayString;
+    if (activeTab === "events" || activeTab === "dashboard") {
+      return e.date >= todayString;
     }
     return true;
   });
@@ -807,9 +812,27 @@ const [flippedId, setFlippedId] = useState<string | null>(null);
                          <Input placeholder="Full Name" value={name} onChange={(e) => setName(e.target.value)} className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 dark:text-white" />
                          <Input placeholder="Register Number" value={registerNumber} onChange={(e) => setRegisterNumber(e.target.value)} className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 dark:text-white" />
                          <Input placeholder="Phone Number" value={phone} onChange={(e) => setPhone(e.target.value)} className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 dark:text-white" />
-                         <Input placeholder="Branch" value={branch} onChange={(e) => setBranch(e.target.value)} className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 dark:text-white" />
-                         <Input placeholder="Year" value={year} onChange={(e) => setYear(e.target.value)} className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 dark:text-white" />
-                         <Input placeholder="Semester" value={semester} onChange={(e) => setSemester(e.target.value)} className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 dark:text-white col-span-1 md:col-span-2" />
+                         
+                         <select value={branch} onChange={(e) => setBranch(e.target.value)} className="flex h-10 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-slate-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-950 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:ring-offset-slate-950 dark:placeholder:text-slate-400 dark:focus-visible:ring-slate-300">
+                           <option value="" disabled>Select Branch</option>
+                           {["cs1", "cs2", "cs3", "it", "ec", "ere", "ce"].map(b => (
+                             <option key={b} value={b}>{b.toUpperCase()}</option>
+                           ))}
+                         </select>
+
+                         <select value={year} onChange={(e) => setYear(e.target.value)} className="flex h-10 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-slate-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-950 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:ring-offset-slate-950 dark:placeholder:text-slate-400 dark:focus-visible:ring-slate-300">
+                           <option value="" disabled>Select Year</option>
+                           {["1", "2", "3", "4"].map(y => (
+                             <option key={y} value={y}>{y}</option>
+                           ))}
+                         </select>
+
+                         <select value={semester} onChange={(e) => setSemester(e.target.value)} className="flex h-10 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-slate-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-950 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-white dark:ring-offset-slate-950 dark:placeholder:text-slate-400 dark:focus-visible:ring-slate-300 col-span-1 md:col-span-2">
+                           <option value="" disabled>Select Semester</option>
+                           {["1", "2", "3", "4", "5", "6", "7", "8"].map(s => (
+                             <option key={s} value={s}>{s}</option>
+                           ))}
+                         </select>
                        </div>
                      ) : (
                        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
@@ -903,19 +926,28 @@ const [flippedId, setFlippedId] = useState<string | null>(null);
                  ) : (
                    <div className="space-y-4">
                      {myRegistrations
-                       .map(reg => events.find(e => e.id === reg.eventId))
-                       .filter(e => e && e.date >= todayString)
-                       .map((event) => event && (
-                       <div key={event.id} className="bg-slate-50 dark:bg-slate-900/50 p-5 rounded-2xl border border-slate-100 dark:border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:shadow-md transition-shadow">
+                       .map(reg => ({ event: events.find(e => e.id === reg.eventId), attended: reg.attended }))
+                       .filter(item => item.event && item.event.date >= todayString)
+                       .map((item) => item.event && (
+                       <div key={item.event.id} className="bg-slate-50 dark:bg-slate-900/50 p-5 rounded-2xl border border-slate-100 dark:border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:shadow-md transition-shadow">
                          <div>
-                           <h4 className="font-bold text-lg text-slate-800 dark:text-slate-200">{event.title}</h4>
+                           <h4 className="font-bold text-lg text-slate-800 dark:text-slate-200">{item.event.title}</h4>
                            <div className="flex items-center gap-4 mt-2">
-                             <p className="text-xs text-slate-500 dark:text-slate-400 font-medium flex items-center gap-1"><Calendar className="w-3.5 h-3.5"/> {event.date}</p>
+                             <p className="text-xs text-slate-500 dark:text-slate-400 font-medium flex items-center gap-1"><Calendar className="w-3.5 h-3.5"/> {item.event.date}</p>
+                             <p className="text-xs font-bold font-medium flex items-center gap-1">
+                               {item.attended === true ? (
+                                 <span className="text-emerald-600 dark:text-emerald-400">✔ Attended</span>
+                               ) : item.attended === false ? (
+                                 <span className="text-rose-600 dark:text-rose-400">❌ Not Attended</span>
+                               ) : (
+                                 <span className="text-amber-600 dark:text-amber-400">⏳ Pending</span>
+                               )}
+                             </p>
                            </div>
                          </div>
                          <div className="shrink-0 flex items-center gap-3">
                            <span className="bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300 text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider">Upcoming</span>
-                           <Button onClick={() => navigate(`/student/event/${event.id}`)} variant="outline" size="sm" className="rounded-full shadow-sm">View Event</Button>
+                           <Button onClick={() => navigate(`/student/event/${item.event.id}`)} variant="outline" size="sm" className="rounded-full shadow-sm">View Event</Button>
                          </div>
                        </div>
                      ))}
@@ -939,30 +971,39 @@ const [flippedId, setFlippedId] = useState<string | null>(null);
                  </div>
 
                  <div className="space-y-4">
-                   {myRegistrations
-                     .map(reg => events.find(e => e.id === reg.eventId))
-                     .filter(e => e && e.date < todayString)
-                     .map((event) => event && (
-                     <div key={event.id} className="bg-slate-50 dark:bg-slate-900/50 p-5 rounded-2xl border border-slate-100 dark:border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-4 opacity-80 hover:opacity-100 transition-opacity">
-                       <div>
-                         <h4 className="font-bold text-lg text-slate-800 dark:text-slate-200">{event.title}</h4>
-                         <div className="flex items-center gap-4 mt-2">
-                           <p className="text-xs text-slate-500 dark:text-slate-400 font-medium flex items-center gap-1"><Calendar className="w-3.5 h-3.5"/> {event.date}</p>
-                         </div>
-                       </div>
-                       <div className="shrink-0 flex items-center gap-3">
-                         <span className="bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-300 text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider">Completed</span>
-                         <Button onClick={() => navigate(`/student/event/${event.id}`)} variant="outline" size="sm" className="rounded-full shadow-sm">Details</Button>
-                       </div>
-                     </div>
-                   ))}
-                   {myRegistrations.filter(reg => {
-                     const e = events.find(ev => ev.id === reg.eventId);
-                     return e && e.date < todayString;
-                   }).length === 0 && (
-                     <div className="text-center py-8 text-slate-500 font-medium bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-100 dark:border-slate-800">You haven't attended any events yet.</div>
-                   )}
-                 </div>
+                    {myRegistrations
+                      .map(reg => ({ event: events.find(e => e.id === reg.eventId), attended: reg.attended }))
+                      .filter(item => item.event && item.event.date < todayString)
+                      .map((item) => item.event && (
+                      <div key={item.event.id} className="bg-slate-50 dark:bg-slate-900/50 p-5 rounded-2xl border border-slate-100 dark:border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-4 opacity-80 hover:opacity-100 transition-opacity">
+                        <div>
+                          <h4 className="font-bold text-lg text-slate-800 dark:text-slate-200">{item.event.title}</h4>
+                          <div className="flex items-center gap-4 mt-2">
+                            <p className="text-xs text-slate-500 dark:text-slate-400 font-medium flex items-center gap-1"><Calendar className="w-3.5 h-3.5"/> {item.event.date}</p>
+                            <p className="text-xs font-bold font-medium flex items-center gap-1">
+                                {item.attended === true ? (
+                                  <span className="text-emerald-600 dark:text-emerald-400">✔ Attended</span>
+                                ) : item.attended === false ? (
+                                  <span className="text-rose-600 dark:text-rose-400">❌ Not Attended</span>
+                                ) : (
+                                  <span className="text-amber-600 dark:text-amber-400">⏳ Pending</span>
+                                )}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="shrink-0 flex items-center gap-3">
+                          <span className="bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-300 text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider">Completed</span>
+                          <Button onClick={() => navigate(`/student/event/${item.event.id}`)} variant="outline" size="sm" className="rounded-full shadow-sm">Details</Button>
+                        </div>
+                      </div>
+                    ))}
+                    {myRegistrations.filter(reg => {
+                      const e = events.find(ev => ev.id === reg.eventId);
+                      return e && e.date < todayString;
+                    }).length === 0 && (
+                      <div className="text-center py-8 text-slate-500 font-medium bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-100 dark:border-slate-800">You haven't attended any events yet.</div>
+                    )}
+                  </div>
                </div>
 
                {/* My Certificates Section */}

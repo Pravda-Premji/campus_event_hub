@@ -5,6 +5,7 @@ import {
   query,
   where,
   getDocs,
+  getDoc,
   addDoc,
   serverTimestamp,
   updateDoc,
@@ -24,6 +25,7 @@ interface RegItem {
   year?: string;
   semester?: string;
   phone?: string;
+  attended?: boolean;
   [key: string]: unknown;
 }
 
@@ -41,6 +43,20 @@ const AdminRegistrations = () => {
   const [uploadedCerts, setUploadedCerts] = useState<CertItem[]>([]);
   const [certFiles, setCertFiles] = useState<{ [key: string]: File | null }>({});
   const [uploadingId, setUploadingId] = useState<string | null>(null);
+  const [eventData, setEventData] = useState<any>(null);
+
+  const handleMarkAttendance = async (studentId: string, status: boolean) => {
+    try {
+      await updateDoc(doc(db, "registrations", studentId), {
+        attended: status
+      });
+      setRegistrations(prev => prev.map(r => r.id === studentId ? { ...r, attended: status } : r));
+      toast.success("Attendance updated successfully");
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to update attendance");
+    }
+  };
 
   const handleUploadCert = async (student: RegItem) => {
     const file = certFiles[student.id];
@@ -204,6 +220,11 @@ const AdminRegistrations = () => {
       );
       const certSnap = await getDocs(certQ);
       setUploadedCerts(certSnap.docs.map(doc => ({ id: doc.id, ...doc.data() as CertItem })));
+
+      const eventDoc = await getDoc(doc(db, "events", eventId));
+      if (eventDoc.exists()) {
+        setEventData(eventDoc.data());
+      }
     };
 
     fetchData();
@@ -224,6 +245,9 @@ const AdminRegistrations = () => {
       {registrations.map(student => {
         const studentCert = uploadedCerts.find(c => c.userId === student.userId);
         const hasCert = !!studentCert;
+        
+        const todayString = new Date().toISOString().split("T")[0];
+        const eventHasPassed = eventData?.date ? eventData.date <= todayString : false;
 
         return (
           <div
@@ -251,7 +275,46 @@ const AdminRegistrations = () => {
               </div>
             )}
             
-            <div className="mt-3 pt-3 border-t">
+            <div className="mt-4 pt-3 border-t flex flex-col sm:flex-row sm:items-start justify-between gap-3 bg-slate-50 dark:bg-slate-900/50 p-3 rounded-lg border border-slate-100 dark:border-slate-800">
+              <span className="font-semibold text-sm text-slate-700 dark:text-slate-300 mt-1">Attendance Status:</span>
+              {eventHasPassed ? (
+                <div className="flex flex-col gap-3 sm:items-end">
+                  <div className="text-sm font-bold flex items-center gap-1">
+                    {student.attended === true ? (
+                      <span className="text-emerald-600 dark:text-emerald-400">✔ Attended</span>
+                    ) : student.attended === false ? (
+                      <span className="text-rose-600 dark:text-rose-400">❌ Not Attended</span>
+                    ) : (
+                      <span className="text-amber-600 dark:text-amber-400">⏳ Not marked</span>
+                    )}
+                  </div>
+                  <div className="flex gap-2 flex-wrap">
+                    <Button 
+                      size="sm" 
+                      variant="outline" 
+                      onClick={() => handleMarkAttendance(student.id, true)} 
+                      disabled={student.attended === true}
+                      className="font-bold border-emerald-200 text-emerald-700 hover:bg-emerald-50 dark:border-emerald-800 dark:text-emerald-400 dark:hover:bg-emerald-900/50"
+                    >
+                      ✔ Mark Attended
+                    </Button>
+                    <Button 
+                      size="sm" 
+                      variant="outline" 
+                      onClick={() => handleMarkAttendance(student.id, false)} 
+                      disabled={student.attended === false}
+                      className="font-bold border-rose-200 text-rose-700 hover:bg-rose-50 dark:border-rose-800 dark:text-rose-400 dark:hover:bg-rose-900/50"
+                    >
+                      ❌ Mark Not Attended
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <span className="text-xs font-medium bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 px-3 py-1.5 rounded-md mt-1">Attendance can be marked after event</span>
+              )}
+            </div>
+            
+            <div className="mt-4 pt-3 border-t">
               <p className="text-sm font-semibold mb-2">Upload Certificate</p>
               {hasCert && studentCert ? (
                 <div className="flex flex-col gap-3">
